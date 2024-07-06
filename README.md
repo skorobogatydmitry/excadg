@@ -137,7 +137,16 @@ Second way is built-in. Vertex invokes payload with {ExcADG::Array} of dependenc
 The project is based on RVM => there is a .ruby-gemset file.  
 Bundler is configured to install gems for dev environment, use `bundle install --without dev` to install only modules needed to run the code.
 
-# Testing
+## Gem
+
+There is a gem specification. Typical commands:
+- build gem: `gem build excadg.gemspec`
+- install / uninstall gem built locally: `gem install ./excadg*.gem` / `gem uninstall excadg`
+- publish: `gem push excadg*.gem`
+
+Latest version is published here: https://rubygems.org/gems/excadg.
+
+## Testing
 
 Test are located in [spec/](spec/) folder and are written using rspec.
 
@@ -150,7 +159,7 @@ Commands to run tests:
   > there is no consistent set of suites, tags are used to exclude mutually incompatible tests or e.g. perfomance tests  
   > search for `config.filter_run_excluding` in [spec/spec_helper.rb](spec/spec_helper.rb) to see what tests are disabled by default
 
-## Logging
+### Logging
 
 Most of the tests have loggin stubbed to avoid noize. Comment out either `stub_loogging` or `Log.mute` in the respective spec file to enable logging for it.
 
@@ -164,17 +173,16 @@ Most of the tests have loggin stubbed to avoid noize. Comment out either `stub_l
 
 > here is a list of improvemets could be implementex next
 
-- make a root module
-- make a gem
 - add timeouts
   - to payload
-  - to the whole vertex
+  - to whole vertex
   - to request processing
 - implement throttling (:suspended state)
   - limit # of running vertices
     - problem: can't find what to suspend
 - make a loop payload template
   - provide a mechanism to control # of children
+- avoid initializing Log on require
 
 ## Graph checks
 

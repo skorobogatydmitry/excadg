@@ -1,5 +1,6 @@
 source 'https://rubygems.org'
 
+# keep in sync with gemspec
 gem 'rgl', '~>0.6'
 
 group :dev do
