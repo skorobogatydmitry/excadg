@@ -1,9 +1,5 @@
 source 'https://rubygems.org'
 
-ruby '3.1.2'
-
-gem 'activesupport'
-gem 'concurrent-ruby'
 gem 'rgl', '~>0.6'
 
 group :dev do
