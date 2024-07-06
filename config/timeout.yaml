@@ -1,0 +1,6 @@
+# sample config which times out
+# command: ./bin/excadg --graph config/timeout.yaml -l timeout.log -d timeout.json --timeout 2
+
+sleeper: # one vertice that sleeps 2 seconds
+  sleep: 5 # it's a keyword for payload that sleeps for number of seconds specified
+# global timeout is less that vertice execution time => it'll timeout

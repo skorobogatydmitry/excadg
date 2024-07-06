@@ -1,0 +1,133 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+require 'optparse'
+
+require 'rgl/adjacency'
+require 'rgl/dot'
+
+require_relative '../lib/excadg'
+
+options = {
+  graph: 'config.yaml',
+  logfile: :stdout,
+  loglevel: Logger::INFO,
+  dump: nil,
+  gdump: nil,
+  timeout: nil
+}
+OptionParser.new { |opts|
+  opts.banner = <<~EOD
+    tool to run a graph of payloads specified in config
+    usage: #{$PROGRAM_NAME} [args]
+  EOD
+  opts.on('-g', '--graph FILENAME', 'config file name to load, see config/sample.yaml for format', "default: #{options[:graph]}") { |o|
+    options[:graph] = o
+  }
+  opts.on(
+    '-l', '--outmode <FILENAME|:silent|:stdout>',
+    'output mode',
+    'app draws TUI if log file is set',
+    'reserved keywords for stdout and silent modes',
+    "default: #{options[:logfile]}"
+  ) { |o|
+    options[:logfile] = o
+  }
+  opts.on('--loglevel <DEBUG|INFO|WARN|ERROR|FATAL>',
+          "log level, default: #{options[:loglevel]}") { |o|
+    name = o.upcase.to_sym
+    raise "unknown log level #{o}" unless Logger.const_defined? name
+
+    options[:loglevel] = Logger.const_get name
+  }
+  opts.on('-d', '--dump FILENAME', 'dump all vertices state data to the file in the end') { |o|
+    options[:dump] = o
+  }
+  opts.on('--gdump FILENAME', 'dump initial execution graph to the file specified') { |o|
+    options[:gdump] = o
+  }
+  opts.on('-t', '--timeout SECONDS', 'for how long to wait for the vertices to execute') { |o|
+    options[:timeout] = o.to_i
+  }
+}.parse!
+
+logfile, ui_drawer =
+  case options[:logfile]
+  when ':stdout', $stdout, :stdout
+    [$stdout, nil]
+  when ':silent'
+    [nil, nil]
+  else # all other strings are considered log file names
+    [options[:logfile], ExcADG::Tui]
+  end
+
+if logfile.nil?
+  ExcADG::Log.mute
+else
+  ExcADG::Log.logger ExcADG::Log::RLogger.new dest: logfile, level: options[:loglevel]
+end
+
+raise "'#{options[:graph]}' config file is not readable" unless File.readable? options[:graph]
+
+ExcADG::Log.info 'reading config'
+config = YAML.safe_load_file options[:graph]
+
+runnable_vertices = config.select { |k, v| v&.dig('dependencies').nil? }.keys
+raise ArgumentError, 'at least one vertex should be ready to start' if runnable_vertices.empty?
+
+ExcADG::Log.info 'collect execution graph from config'
+
+all_vertex_names = config.keys.collect!(&:to_sym)
+graph = RGL::DirectedAdjacencyGraph.new
+config.each_pair { |id, vconfig|
+  name = id.to_sym
+  payload = if vconfig&.key?('command')
+              ExcADG::Payload::Wrapper::Bin.new args: vconfig['command']
+            elsif vconfig&.key?('sleep')
+              ExcADG::Payload::Example::Sleepy.new args: vconfig['sleep'].to_i
+            else
+              ExcADG::Payload::Example::Echo.new args: vconfig
+            end
+  deps_v_names = (vconfig&.dig('dependencies') || []).collect(&:to_sym)
+  deps_v_names.each { |dep|
+    raise "there is no dependency named '#{dep}' in the graph for vertex '#{id}'" unless all_vertex_names.include? dep
+
+    graph.add_edge name, dep
+  }
+
+  ExcADG::Vertex.new name:, payload:, deps: deps_v_names
+}
+
+graph.write_to_graphic_file(options[:gdump].split('.').last, options[:gdump].split('.')[...-1].join('.')) unless options[:gdump].nil?
+
+ExcADG::Log.info 'starting state data broker'
+ExcADG::Broker.run
+
+ui_drawer&.run
+
+ExcADG::Log.info 'watching for all vertices to complete'
+timed_out = false
+begin
+  ExcADG::Broker.wait_all(timeout: options[:timeout]).join
+rescue Timeout::Error
+  ExcADG::Log.error 'execution timed out'
+  timed_out = true
+end
+vertice_by_state = ExcADG::Broker.data_store.to_a.group_by(&:state)
+
+ExcADG::Log.info "#{vertice_by_state[:done]&.size || 0} done, #{vertice_by_state[:failed]&.size || 0} failed"
+has_failed = !vertice_by_state[:failed].nil?
+ui_drawer&.summarize has_failed, timed_out
+
+unless options[:dump].nil?
+  ExcADG::Log.info "writing data to #{options[:dump]}"
+  File.open(options[:dump], 'w+') { |f|
+    f.write JSON.dump ExcADG::Broker.data_store.to_a
+  }
+end
+
+sleep 0.1 # let the logger to print message
+exit_code = 0
+exit_code |= 1 if has_failed
+exit_code |= 2 if timed_out
+exit exit_code

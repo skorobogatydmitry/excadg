@@ -1,0 +1,8 @@
+bin/*
+!bin/excadg
+doc/
+.yardoc/
+*.log
+*.dot
+*.jpg
+*.json

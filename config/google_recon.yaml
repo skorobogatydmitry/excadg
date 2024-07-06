@@ -1,0 +1,41 @@
+# a more sophisticated example - do several operations on goo.gle site
+# it's obviously overcomplicated for illustration purposes
+# command: ./bin/excadg --graph config/google_recon.yaml -l recon.log -d recon.json --gdump graph.jpg
+
+jq: # this vertice fails on systems without jq
+  command: jq -V
+nmap:
+  command: nmap -v
+traceroute:
+  command: traceroute -V
+echo:
+  site: goo.gle
+lookup:
+  dependencies: [echo, jq]
+  command: |
+    site=$(cat $DEPS_DATAFILE | jq -r '.[] | select(.name == "echo") | .data.site')
+    dig +short "$site"
+get_ip:
+  dependencies: [lookup]
+  command: |
+    cat $DEPS_DATAFILE | jq -r '.[0].data.stdout' | head -n1 | tr -d '\n'
+ping10:
+  dependencies: [get_ip]
+  command: ping -c 10 $(cat $DEPS_DATAFILE | jq -r '.[0].data.stdout')
+trace:
+  dependencies: [get_ip, traceroute]
+  command: traceroute $(cat $DEPS_DATAFILE | jq -r '.[] | select(.name == "get_ip") | .data.stdout')
+http_get:
+  dependencies: [echo, jq]
+  command: curl -sI $(cat $DEPS_DATAFILE | jq -r '.[] | select(.name == "echo") | .data.site')
+nmap1:
+  dependencies: [get_ip, nmap]
+  command: nmap -p 0-1000 $(cat $DEPS_DATAFILE | jq -r '.[] | select(.name == "get_ip") | .data.stdout')
+nmap2:
+  dependencies: [get_ip, nmap]
+  command: nmap -p 1001-2000 $(cat $DEPS_DATAFILE | jq -r '.[] | select(.name == "get_ip") | .data.stdout')
+ping_stat:
+  dependencies: [ping10]
+  command: |
+    ms_avg=$(cat $DEPS_DATAFILE | jq -r '.[0].data.stdout' | awk 'BEGIN { total = 0.0 }; $7 ~ /time=.*/ {gsub("time=", "", $7); total += $7}; END {print total / 10}')
+    echo average ping time: ${ms_avg}

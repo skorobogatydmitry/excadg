@@ -1,0 +1,20 @@
+# it's a sample config for the `run` tool to execute 3 vertices with payload
+# command: ./bin/excadg --graph config/sample.yaml -l sample.log -d sample.json --gdump sample.jpg
+
+# the root mapping sets execution graph
+
+# keys are vertice names
+v0: # vertice echoes its config if there are no payload-specific config keys
+  custom: data
+v1:
+  # config supports shell commands as payload, see lib/excadg/payload/wrapper.rb#Bin
+  command: echo I am here!
+v2:
+  dependencies: [v0]
+  sleep: 1 # it's a keyword to isntanciate Payload::Example::Sleepy
+v3:
+  # dependencies are optional
+  # there should be, at least, 1 vertex without dependencies to start from
+  dependencies: [v2, v1, v0]
+  # $DEPS_DATAFILE is a convention from payload to access dependencies data
+  command: cat $DEPS_DATAFILE | grep -o 'I am here!' 1>&2
