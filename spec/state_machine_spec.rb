@@ -4,10 +4,6 @@ module ExcADG
   describe StateMachine do
     subject(:sm) { StateMachine.new name: :me }
 
-    before {
-      stub_loogging
-    }
-
     it 'should bind correct transitions' do
       sm.bind_action(:new, :ready) { raise }
     end

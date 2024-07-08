@@ -2,9 +2,6 @@
 
 module ExcADG
   describe Broker do
-    before {
-      stub_loogging
-    }
     context 'for ask' do
       subject(:dvertex) { double Vertex }
       subject(:dractor_cls) { class_double(Ractor).as_stubbed_const(transfer_nested_constants: true) }

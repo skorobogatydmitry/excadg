@@ -7,11 +7,10 @@ require_relative 'assertions'
 module ExcADG
   # logging support
   module Log
-    # ractor-based logger
-    # this ractor logger receives messages from other ractors and log them
-    # it can be useful in case logging shouldn't interrupt other thread
-    # @param dest - what to write logs to, $stdout by default, gets interpret as filename unless IO
-    # @param level - one of the Logger's log levels
+    # ractor-based logger,
+    # this ractor logger receives messages from other ractors and log them,
+    # @param dest what to write logs to, $stdout by default, gets interpret as filename unless IO
+    # @param level one of the Logger's log levels
     class RLogger < Ractor
       def self.new dest: $stdout, level: Logger::INFO
         super(dest, level) { |dest, level|
@@ -29,6 +28,12 @@ module ExcADG
       end
     end
 
+    # default logger
+    @main = RLogger.new
+
+    # logging is muted by default
+    @muted = true
+
     def self.method_missing(method, *args, &_block)
       return if @muted
 
@@ -43,19 +48,22 @@ module ExcADG
       true
     end
 
-    # default logger e.g. for tests
-    @main = RLogger.new
-    @muted = false
-
-    # replaces default logger with a custom logger
+    # replaces default logger with a custom one
+    # and unmutes logging
     def self.logger new_logger
       Assertions.is_a? new_logger, RLogger
       @main = new_logger
+      unmute
     end
 
     # mute logging by ignoring all incoming log requests
     def self.mute
       @muted = true
+    end
+
+    # unmute logging for new messages
+    def self.unmute
+      @muted = false
     end
   end
 end

@@ -2,9 +2,6 @@
 
 module ExcADG
   describe DependencyManager do
-    before {
-      stub_loogging
-    }
     context 'with_incorrect_deps' do
       subject(:not_array) { :me }
       subject(:raw_deps) { [:some, :other, double(Vertex), 'incorrect'] }

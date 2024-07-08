@@ -3,8 +3,6 @@
 module ExcADG
   describe Payload::Wrapper::Bin, uses: :payload do
     before {
-      Log.mute
-      Log.logger Log::RLogger.new level: Logger::DEBUG
       Broker.run
     }
     context 'echo temp file' do

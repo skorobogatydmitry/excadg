@@ -8,7 +8,7 @@ Another feature is that the graph is dynamic and any vertex could produce anothe
 
 ## Tool
 
-There is a tool script in root folder called `excadg`. Run `./bin/excadg --help` for available options.  
+There is a tool script in `bin` folder called `excadg`. Run `./bin/excadg --help` for available options.  
 It allows to make and run basic payload graphs specified by a YAML config. See [config/](config/) folder for sample configs.
 
 ## Framework
@@ -132,6 +132,10 @@ Second way is built-in. Vertex invokes payload with {ExcADG::Array} of dependenc
 > Be mindful about data your payload receives (args) and returns (state data). It could appear incompatible with ractors and cause vertice to fail.  
 > Although these failures are hard to tell beforehand, [state machine](#statemachine) processes them gracefully.
 
+## {ExcADG::Log}
+
+The library has its own logger based on Ractors. You could call {ExcADG::Log#unmute} to enable these logs.
+
 # Development
 
 The project is based on RVM => there is a .ruby-gemset file.  
@@ -159,9 +163,7 @@ Commands to run tests:
   > there is no consistent set of suites, tags are used to exclude mutually incompatible tests or e.g. perfomance tests  
   > search for `config.filter_run_excluding` in [spec/spec_helper.rb](spec/spec_helper.rb) to see what tests are disabled by default
 
-### Logging
-
-Most of the tests have loggin stubbed to avoid noize. Comment out either `stub_loogging` or `Log.mute` in the respective spec file to enable logging for it.
+Logging is disabled by default, but it could be useful to debug tests. Add `ExcADG::Log.unmute` to `spec/spec_helper.rb` to enable logs.
 
 # Docs
 
@@ -182,7 +184,6 @@ Most of the tests have loggin stubbed to avoid noize. Comment out either `stub_l
     - problem: can't find what to suspend
 - make a loop payload template
   - provide a mechanism to control # of children
-- avoid initializing Log on require
 
 ## Graph checks
 

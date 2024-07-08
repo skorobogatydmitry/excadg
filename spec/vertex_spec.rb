@@ -7,7 +7,6 @@ module ExcADG
   # rubocop:disable Style/BlockDelimiters
   describe Vertex do
     before(:all) {
-      Log.mute # stubbind with a double doesn't work as doubles aren't shareable
       Broker.run
     }
 

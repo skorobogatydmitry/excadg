@@ -61,9 +61,7 @@ logfile, ui_drawer =
     [options[:logfile], ExcADG::Tui]
   end
 
-if logfile.nil?
-  ExcADG::Log.mute
-else
+unless logfile.nil?
   ExcADG::Log.logger ExcADG::Log::RLogger.new dest: logfile, level: options[:loglevel]
 end
 

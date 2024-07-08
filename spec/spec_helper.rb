@@ -129,13 +129,3 @@ class ErrorCatcher
     yield e if block_given?
   end
 end
-
-# stubs {ExcADG::Log}
-def stub_loogging
-  dlogger = double ExcADG::Log::RLogger
-  stub_const('ExcADG::Log', dlogger)
-  %i[error warn info debug].each { |lm|
-    allow(dlogger).to receive lm
-  }
-  # Log.mute # TODO: understand why the above stubbing doesn't work for
-end

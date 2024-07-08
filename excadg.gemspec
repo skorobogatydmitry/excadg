@@ -1,11 +1,11 @@
 Gem::Specification.new { |s|
   s.name                  = 'excadg'
-  s.version               = '0.1.3'
+  s.version               = '0.1.4'
   s.summary               = 'Execute Acyclic Directed Graph'
   s.authors               = ['skorobogatydmitry']
   s.description           = File.read('README.md')[/(?<=# Description)[^#]+/].chomp
   s.files                 = Dir['lib/**/*.rb', 'README.md']
-  s.executables           << 'excadg'
+  s.executables << 'excadg'
   s.email                 = 'skorobogaty.dmitry@gmail.com'
   s.homepage              = 'https://rubygems.org/gems/excadg'
   s.license               = 'LGPL-3.0-only'
