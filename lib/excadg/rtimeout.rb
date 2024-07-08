@@ -9,6 +9,7 @@ module ExcADG
       return block.call if timeout.nil? || timeout.zero?
 
       timed_out = false
+      Thread.report_on_exception = false
       payload = Thread.new { Thread.current[:result] = block.call }
       Thread.new {
         sleep timeout
