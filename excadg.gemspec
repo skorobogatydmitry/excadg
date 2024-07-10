@@ -1,6 +1,6 @@
 Gem::Specification.new { |s|
   s.name                  = 'excadg'
-  s.version               = '0.2.1'
+  s.version               = '0.2.2'
   s.summary               = 'Execute Acyclic Directed Graph'
   s.authors               = ['skorobogatydmitry']
   s.description           = File.read('README.md')[/(?<=# Description)[^#]+/].chomp
@@ -11,7 +11,7 @@ Gem::Specification.new { |s|
   s.license               = 'LGPL-3.0-only'
   s.required_ruby_version = ">= #{File.read('.ruby-version').chomp}"
   s.metadata              = {
-    'source_code' => 'https://github.com/skorobogatydmitry/excadg'
+    'source_code_uri' => 'https://github.com/skorobogatydmitry/excadg'
   }
   # keep in sync with Gemfile
   s.add_dependency 'rgl', '~>0.6'
