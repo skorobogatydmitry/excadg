@@ -5,7 +5,7 @@
       "type": "rdbg",
       "name": "rspec",
       "request": "launch",
-      "script": "bin/rspec ${file}",
+      "script": "bin/rspec",
     },
     {
       "type": "rdbg",

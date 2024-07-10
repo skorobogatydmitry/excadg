@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'benchmark'
+
 require_relative '../broker'
 require_relative '../request'
 
@@ -55,23 +57,16 @@ module ExcADG
       end
     end
 
-    # calculate Nth member of the function
-    # y = x(n) * (x(n-1)) where x(0) = 0 and x(1) = 1
-    # it illustrates how payload can be customized with @args
-    # and extended by adding methods
-    class Multiplier
+    # payload that occupies a CPU core for several seconds,
+    # is suitable for perfomance tests
+    class Benchmark
       include Payload
       def get
-        -> { get_el x: @args }
-      end
-
-      def get_el x:
-        case x
-        when 0 then 0
-        when 1 then 1
-        else
-          x * get_el(x: x - 1)
-        end
+        lambda {
+          Log.info(::Benchmark.measure {
+            10_000.downto(1) { |i| 10_000.downto(1) { |j| i * j } }
+          })
+        }
       end
     end
 

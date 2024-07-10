@@ -173,13 +173,17 @@ module ExcADG
     end
 
     context 'with many vertices', :perf do
-      subject(:list) {
-        (0..1000).collect { |i| Vertex.new payload: Payload::Example::Multiplier.new(args: i + 5_000) }
+      subject(:array) {
+        Array.new(32) { Vertex.new payload: Payload::Example::Benchmark.new }
       }
-      subject { Vertex.new payload: Payload::Example::Echo.new, deps: list }
-      it 'should finish in X minutes' do
-        Timeout.timeout(30) {
-          sleep 2 until subject.state.eql? :done
+      subject { Vertex.new payload: Payload::Example::Echo.new, deps: array }
+      it 'should finish in timeout' do
+        Timeout.timeout(90) { # timeout is speculative
+          loop {
+            sleep 2
+            raise 'payload failed' if subject.data&.failed?
+            break if subject.data&.done?
+          }
         }
       end
     end
