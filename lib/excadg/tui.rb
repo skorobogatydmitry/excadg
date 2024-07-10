@@ -12,16 +12,6 @@ module ExcADG
     MAX_VERTEX_TO_SHOW = 10
     DELAY = 0.2
     DEFAULT_BOX_SIZE = { height: 50, width: 150 }.freeze
-    # TODO: do runtime calc
-    BOX_SIZE = {
-      height: DEFAULT_BOX_SIZE[:height] > (IO.console&.winsize&.first || 1000) ? IO.console.winsize.first : DEFAULT_BOX_SIZE[:height],
-      width: DEFAULT_BOX_SIZE[:width] > (IO.console&.winsize&.last || 1000) ? IO.console.winsize.last : DEFAULT_BOX_SIZE[:width]
-    }.freeze
-    CONTENT_SIZE = {
-      height: BOX_SIZE[:height] - 4, # 2 for borders, 1 for \n, 1 for remark
-      width: BOX_SIZE[:width] - 5 # 2 for borders, 2 to indent
-    }.freeze
-    LINE_TEMPLATE = "| %-#{CONTENT_SIZE[:width]}s |\n".freeze
 
     @started_at = DateTime.now.strftime('%Q').to_i
 
@@ -47,20 +37,21 @@ module ExcADG
       # @param content is a list of lines to print
       def print_in_box content
         clear
-        print "+-#{'-' * CONTENT_SIZE[:width]}-+\n"
-        content[..CONTENT_SIZE[:height]].each { |line|
-          if line.size > CONTENT_SIZE[:width]
-            printf LINE_TEMPLATE, "#{line[...(CONTENT_SIZE[:width] - 3)]}..."
+        refresh_sizes
+        print "+-#{'-' * @content_size[:width]}-+\n"
+        content[..@content_size[:height]].each { |line|
+          if line.size > @content_size[:width]
+            printf @line_template, "#{line[...(@content_size[:width] - 3)]}..."
           else
-            printf LINE_TEMPLATE, line
+            printf @line_template, line
           end
         }
-        if content.size < CONTENT_SIZE[:height]
-          (CONTENT_SIZE[:height] - content.size).times { printf LINE_TEMPLATE, ' ' }
+        if content.size < @content_size[:height]
+          (@content_size[:height] - content.size).times { printf @line_template, ' ' }
         else
-          printf LINE_TEMPLATE, '<some content did not fit and was cropped>'[..CONTENT_SIZE[:width]]
+          printf @line_template, '<some content did not fit and was cropped>'[..@content_size[:width]]
         end
-        print "+-#{'-' * CONTENT_SIZE[:width]}-+\n"
+        print "+-#{'-' * @content_size[:width]}-+\n"
       end
 
       def print_summary has_failed, timed_out
@@ -79,6 +70,18 @@ module ExcADG
 
       def clear
         print "\e[2J\e[f"
+      end
+
+      def refresh_sizes
+        box_size = {
+          height: IO.console&.winsize&.first.nil? || DEFAULT_BOX_SIZE[:height] < IO.console.winsize.first ? DEFAULT_BOX_SIZE[:height] : IO.console.winsize.first,
+          width: IO.console&.winsize&.last.nil? || DEFAULT_BOX_SIZE[:width] < IO.console&.winsize&.last ? DEFAULT_BOX_SIZE[:width] : IO.console.winsize.last
+        }.freeze
+        @content_size = {
+          height: box_size[:height] - 4, # 2 for borders, 1 for \n, 1 for remark
+          width: box_size[:width] - 5 # 2 for borders, 2 to indent
+        }.freeze
+        @line_template = "| %-#{@content_size[:width]}s |\n"
       end
 
       # make states summary, one for a line with consistent placing
