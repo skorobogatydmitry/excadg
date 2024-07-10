@@ -21,7 +21,7 @@ Main usage pattern for this project is a framework. It implies that you:
 ### Payload implementation
 
 Payload is a piece of code to execute in a single vertex. This code should be self-contained and use specific ways to communicate with other vertices.  
-There is a [{ExcADG::Payload}](lib/excadg/payload.rb) module to make a custom payload class. Read through its documentation to get familiar with its interface.  
+There is a [{ExcADG::Payload}](lib/excadg/payload.rb) module to make a custom payload class. Read through its documentation to get familiar with the interface.  
 
 Here is a very basic example of a payload that echoes a message:
 
@@ -33,29 +33,31 @@ class MyPayload
   end
 end
 ```
-More payload examples could be found in [{ExcADG::Payload::Example}](lib/excadg/payload/example.rb).
+More payload examples could be found in the [{ExcADG::Payload::Example}](lib/excadg/payload/example.rb) module.
 
 Any payload has 3 parts:
 - code
 - arguments
 - dependencies data
 
-**Code** is defined in {Payload#get} method. E.g. `system 'echo here I am'` in the above example.  
-**Arguments** are defined during payload object contruction (see {Payload#initialize}) as `args:` parameter. E.g. `MyPayload.new args: 'my custom message'`.  
+**Code** is defined in {ExcADG::Payload#get} method. E.g. `system 'echo here I am'` in the above example.  
+**Arguments** could be supplied during payload object contruction (see {ExcADG::Payload#initialize}) as `args:` parameter. E.g. `MyPayload.new args: 'my custom message'`.  
 **Dependencies data** is provided by the framework and has all [{ExcADG::VStateData}](lib/excadg/vstate_data.rb) returned by the dependencies.
 
 ### Vertices constructing
 
-Vertex is a execution graph's building block. It executes its payload when all its dependencies are finished.  
-Vertex can be created this way: `Vertex.new name: :myvertex, payload: MyPayload.new`. This vertex doesn't have any dependencies, so it starts execution immediately upon construction. Vertices without dependencies are always aneeded in the graph to start it.  
+Vertex is an execution graph's building block. It executes its payload when all its dependencies are finished.  
+Vertex can be created this way: `Vertex.new name: :myvertex, payload: MyPayload.new`. This vertex doesn't have any dependencies, so it starts execution immediately upon construction. Vertices without dependencies are always needed in the graph to start it.  
 
-Another "kind" of vertices are vertices with dependencies. Dependencies are other vertices that the vertex waits to finish successfully before running its own payload.  
-> Example: `Vertex.new name: :other_vertex, payload: MyPayload.new, deps: [:myvertex]` has exactly 1 dependency - vertex called `:myvertex`  
-> `:other_vertex` won't start until `:myvertex` finishes.  
-> Moreover, as described in [payload](#payload), `:other_vertex`'s payload will have access to data returned by `:myvertex`'s payload.  
-> In this case, it'd be what `system 'echo here I am'` returns - `true`.
+Another "kind" of vertices are vertices with dependencies. Dependencies are an array other vertices that the vertex waits to finish successfully before running its own payload.  
 
-Dependencies could be specified both - using {ExcADG::Vertex} objects and names. E.g.
+Example:  
+`Vertex.new name: :other_vertex, payload: MyPayload.new, deps: [:myvertex]` has exactly 1 dependency - the vertex called `:myvertex`  
+`:other_vertex` won't start until `:myvertex` finishes.  
+Moreover, as described in [payload](#excadgpayload), `:other_vertex`'s payload will have access to data returned by `:myvertex`'s payload.  
+In this case, it'd be what `system 'echo here I am'` returns - `true`.
+
+Dependencies could be specified with both - {ExcADG::Vertex} objects and names. E.g.
 ``` ruby
 Broker.run
 
@@ -67,27 +69,27 @@ Vertex.new name: :final, payload: MyPayload.new, deps: [v1, :v2]
 Broker.wait_all
 ```
 
-*See [Broker section](#broker) for `Broker.run` and `Broker.wait_all` usage.*
+*See [Broker section](#excadgbroker) for `Broker.run` and `Broker.wait_all` usage.*
 
 Using actual objects looks simpler, but it's less convenient, as it requires you to construct all vertices as they appear in the execution graph.  
-However, names allows you to spawn vertices in arbitrary order and expect framework to figure execution order on the fly. See [run tool](#tool) as an example of using names.
+However, names allows you to spawn vertices in arbitrary order and expect framework to figure execution order on the fly. See [run tool](#tool)'s code as an example of using names.
 
-*There is no need to store {ExcADG::Vertex} objects, as it and its data are available through [Broker](#broker)'s [DataStore](#data-store) and there is no interface to communicate with a {ExcADG::Vertex} directly.*
+*There is no need to store {ExcADG::Vertex} objects, as it and its data are available through [Broker](#excadgbroker)'s [DataStore](#excadgdatastore) and there is no interface to communicate with an {ExcADG::Vertex} directly.*
 
 # Internals
 
 ## Overview
 
 This framework allows to spawn vertices. Once created, a vertex with payload starts immediately.
-This means that there is no central place where execution seqence is controlled besides vertex's own mechanism to wait for dependencies.
+This means that there is no central place that controls execution seqence besides vertex's own mechanism to wait for dependencies.
 
-As Ractors doesn't allow to reliably exchange data between each other at the moment, the main Ractor (thread) has to spawn a broker to synchronize data exchange. See [broker](#broker) sections to learn more.
+As Ractors doesn't allow to reliably exchange data between each other at the moment, the main Ractor (thread) has to spawn a broker to synchronize data exchange. See [broker](#excadgbroker) sections to learn more.
 
 This framework is based on [Ractors](https://docs.ruby-lang.org/en/master/ractor_md.html). It could be useful to get familiar with ractors before reading further.
 
 ## Vertice processing states
 
-Internally, each vertice goes through a sequence of states. Now it's **new**, **ready**, **done** and **failed**. Stages are controlled by the [{ExcADG::StateMachine}](#statemachine).
+Internally, each vertice go through a sequence of states. Now it's **new**, **ready**, **done** and **failed**. Stages are controlled by the [{ExcADG::StateMachine}](#excadgstatemachine).
 
 {ExcADG::Vertex} starts as a **new** vertex and waits for its dependencies.  
 When vertex received all dependencies states and made sure they're **done**, it becomes **ready** and starts its payload.  
@@ -103,13 +105,13 @@ When a vertex changes its state, it (actually, state machine does that) notifies
 Broker is desired to be as thin as possible to keep most of the work for vertices.
 
 Each application should invoke {Broker.run} to enable messages processing.  
-Its counterpart is {Broker.wait_all} which waits for all known vertices to reach one of the terminal states (**done** or **failed**) within specified timeout. Same as `Broker.run`, it spawns a thread and returns it. The main application could keep it in background and query or `.join` on it once all vertices are spawned. Once the thread finishes, the main app could lookup vertices execution results in {Broker.data_store} (see [DataStore](#data-store)).
+Its counterpart is {Broker.wait_all} which waits for all known vertices to reach one of the terminal states (**done** or **failed**) within specified timeout. Same as `Broker.run`, it spawns a thread and returns it. The main application could keep it in background and query or `.join` on it once all vertices are spawned. Once the thread finishes, the main app could lookup vertices execution results in {Broker.data_store} (see [DataStore](#excadgdatastore)).
 
 > Beware that broker constantly uses main Ractor's ports - incoming and outgoing. Hence, `Ractor#take`, `Ractor.yield` or any other messaging in the main ractor conflict with broker.
 
 ## {ExcADG::DataStore}
 
-It's a mostly internal [Broker's](#broker) object that holds all vertice's [{ExcADG::VStateData}](lib/excadg/vstate_data.rb).
+It's a mostly internal [Broker's](#excadgbroker) object that holds all vertice's [{ExcADG::VStateData}](lib/excadg/vstate_data.rb).
 
 ## {ExcADG::StateMachine}
 
@@ -117,7 +119,7 @@ State machine is a small internal mechanism that helps vertices to
 - do state transitions
 - preserve state transition results locally
 
-State machine has transitions graph that is common for all vertices. Vertices bind certain logic to transitions. E.g. "wait for dependencies" or "run the payload". State transition mechanism ensures to run workload associated to the currently possible transition, process errors (if any) and send results to [Broker](#broker).
+State machine has transitions graph that is common for all vertices. Vertices bind certain logic to transitions. E.g. "wait for dependencies" or "run the payload". State transition mechanism ensures to run workload associated to the currently possible transition, process errors (if any) and send results to [Broker](#excadgbroker).
 
 ## {ExcADG::Payload}
 
@@ -130,7 +132,7 @@ First way is `args` parameter of the {Payload#initialize}. It can be used on pay
 Second way is built-in. Vertex invokes payload with {ExcADG::Array} of dependencies {ExcADG::VStateData}, if payload's `Proc` is parametrized (has arity 1).
 
 > Be mindful about data your payload receives (args) and returns (state data). It could appear incompatible with ractors and cause vertice to fail.  
-> Although these failures are hard to tell beforehand, [state machine](#statemachine) processes them gracefully.
+> Although these failures are hard to tell beforehand, [state machine](#excadgstatemachine) processes them gracefully.
 
 ## {ExcADG::Log}
 
