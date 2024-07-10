@@ -12,6 +12,12 @@
       "name": "rspec current test",
       "request": "launch",
       "script": "bin/rspec ${file}:${lineNumber}",
+    },
+    {
+      "type": "rdbg",
+      "name": "example - google recon",
+      "request": "launch",
+      "script": "./bin/excadg --graph config/google_recon.yaml -l :stdout -d recon.json --gdump graph.jpg",
     }
   ]
 }
