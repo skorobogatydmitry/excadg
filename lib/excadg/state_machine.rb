@@ -53,24 +53,30 @@ module ExcADG
       target = target_candidates.first
       Log.debug "found a candidate: #{target}"
       edge = GRAPH.edges.find { |e| e.source == @state && e.target = target }
-      begin
+
+      with_fault_processing {
         @state_transition_data[target] = @state_edge_bindings[edge].call
         @state = target
         Log.debug "moved to #{@state}"
+      }
+      @state_transition_data[@state]
+    end
+
+    # invoke the block provided with state update on failures
+    def with_fault_processing
+      yield if block_given?
+    rescue StandardError => e
+      Log.error "step failed with #{e} / #{e.backtrace}"
+      @state_transition_data[:failed] = e
+      @state = :failed
+    ensure
+      begin
+        Broker.ask Request::Update.new data: state_data
       rescue StandardError => e
-        Log.error "step failed with #{e} / #{e.backtrace}"
         @state_transition_data[:failed] = e
         @state = :failed
-      ensure
-        begin
-          Broker.ask Request::Update.new data: state_data
-        rescue StandardError => e
-          @state_transition_data[:failed] = e
-          @state = :failed
-          Broker.ask Request::Update.new data: state_data
-        end
+        Broker.ask Request::Update.new data: state_data
       end
-      @state_transition_data[@state]
     end
 
     def assert_state_transition_bounds

@@ -177,10 +177,6 @@ Logging is disabled by default, but it could be useful to debug tests. Add `ExcA
 
 > here is a list of improvemets could be implementex next
 
-- add timeouts
-  - to payload
-  - to whole vertex
-  - to request processing
 - implement throttling (:suspended state)
   - limit # of running vertices
     - problem: can't find what to suspend

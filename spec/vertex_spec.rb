@@ -56,15 +56,46 @@ module ExcADG
       end
     end
     context 'with timeout set' do
-      subject { Vertex.new timeout: 0.1, payload: Payload::Example::Sleepy.new(args: 2) }
-
-      it 'times out' do
+      subject(:sleep_1) { Payload::Example::Sleepy.new(args: 1) }
+      it 'times out with plain timeout' do
+        v = Vertex.new timeout: 0.1, payload: sleep_1
         loop {
           sleep 0.1
-          raise 'unexpected' if subject.state.eql? :done
-          break if subject.state.eql? :failed
+          raise "unexpected: #{v.state}" if v.state.eql? :done
+          break if v.state.eql? :failed
         }
-        expect(subject.data.data).to be_a RTimeout::TimedOutError
+        expect(v.data.data).to be_a RTimeout::TimedOutError
+      end
+
+      it 'times out with global timeout only' do
+        v = Vertex.new timeout: VTimeout.new(global: 0.1), payload: sleep_1
+        loop {
+          sleep 0.1
+          raise "unexpected: #{v.state}" if v.state.eql? :done
+          break if v.state.eql? :failed
+        }
+        expect(v.data.data).to be_a RTimeout::TimedOutError
+      end
+
+      it 'times out with payload timeout only' do
+        v = Vertex.new timeout: VTimeout.new(payload: 0.1), payload: sleep_1
+        loop {
+          sleep 0.1
+          raise "unexpected: #{v.state}" if v.state.eql? :done
+          break if v.state.eql? :failed
+        }
+        expect(v.data.data).to be_a RTimeout::TimedOutError
+      end
+
+      it 'times out with deps timeout only' do
+        long_dep = Vertex.new payload: sleep_1
+        v = Vertex.new timeout: VTimeout.new(deps: 0.1), payload: Payload::Example::Echo.new, deps: [long_dep]
+        loop {
+          sleep 0.1
+          raise "unexpected: #{v.state}" if v.state.eql? :done
+          break if v.state.eql? :failed
+        }
+        expect(v.data.data).to be_a RTimeout::TimedOutError
       end
     end
 
