@@ -1,9 +1,13 @@
 bin/*
 !bin/excadg
+!bin/adgen
 doc/
 .yardoc/
-*.log
 *.dot
+*.gem
+*.jpeg
 *.jpg
 *.json
-*.gem
+*.log
+*.png
+*.yaml

@@ -9,7 +9,10 @@ Another feature is that the graph is dynamic and any vertex could produce anothe
 ## Tool
 
 There is a tool script in `bin` folder called `excadg`. Run `./bin/excadg --help` for available options.  
-It allows to make and run basic payload graphs specified by a YAML config. See [config/](config/) folder for sample configs.
+It allows to run basic payload graphs specified by a YAML config. See [config/](config/) folder for sample configs.
+
+Another tool is `bin/adgen`, it has `--help` as well. It's suitable to generate relatively complex random graphs.  
+Try `./bin/adgen --range 1:5 --file mygraph.yaml --count 30` then `./bin/excadg --graph mygraph.yaml -l mygraph.log -d mygraph.yaml --gdump mygraph.jpg`.
 
 ## Framework
 

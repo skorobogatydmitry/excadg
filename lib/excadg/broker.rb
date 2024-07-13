@@ -55,7 +55,7 @@ module ExcADG
       # @param period time between vertices state check
       def wait_all timeout: 60, period: 1
         Thread.new {
-          Log.info "timeout is #{timeout} seconds"
+          Log.info "timeout is #{timeout || '∞'} seconds"
           Timeout.timeout(timeout) {
             loop {
               sleep period

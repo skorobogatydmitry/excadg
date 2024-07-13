@@ -68,9 +68,9 @@ end
 raise "'#{options[:graph]}' config file is not readable" unless File.readable? options[:graph]
 
 ExcADG::Log.info 'reading config'
-config = YAML.safe_load_file options[:graph]
+config = YAML.safe_load_file options[:graph], permitted_classes: [Symbol]
 
-runnable_vertices = config.select { |k, v| v&.dig('dependencies').nil? }.keys
+runnable_vertices = config.select { |k, v| (v&.dig('dependencies') || []).empty? }.keys
 raise ArgumentError, 'at least one vertex should be ready to start' if runnable_vertices.empty?
 
 ExcADG::Log.info 'collect execution graph from config'

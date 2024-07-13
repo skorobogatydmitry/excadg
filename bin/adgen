@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+
+require 'logger'
+require 'optparse'
+require 'rgl/adjacency'
+require 'rgl/dot'
+require 'yaml'
+
+log = Logger.new $stdout
+
+options = {
+  count: 20,
+  delay: (1..5),
+  file: 'graph.yaml',
+  connectivity: 0.5
+}
+
+OptParse.new { |opts|
+  opts.banner = <<~EOD
+    sample config generator for excadg
+    makes a graph of randomly connected vertices
+    each vertex sleeps random # of seconds in range set
+    usage: #{$PROGRAM_NAME} [args]
+  EOD
+  opts.on('-c', '--count NUMBER', 'number of vertices to generate', "default: #{options[:count]}") { |o|
+    raise "Vertices count should be positive, got #{o.to_i}" unless o.to_i.positive?
+
+    options[:count] = o.to_i
+  }
+  opts.on('-f', '--file FILENAME', 'file name to dump config to', "default: #{options[:file]}") { |o|
+    options[:file] = o
+  }
+  opts.on('-r', '--range MIN:MAX', 'time range in seconds for vertives to sleep', "default: #{options[:delay]}") { |o|
+    min, max = o.split(':').collect(&:to_i)
+    raise "Min should be > 0, got #{min}" unless min.positive?
+    raise "Max should be >= #{min}, got #{max}" unless max >= min
+
+    options[:delay] = (min..max)
+  }
+  opts.on('--connectivity NUMBER',
+          'graph connectivity, should be in (0...1)',
+          'it sets a percentage of existing nodes are connected to new one',
+          'the tool makes nodes iteratively, so there is a guarantee that result is a tree',
+          "default: #{options[:connectivity]}") { |o|
+    options[:connectivity] = o.to_f
+    raise 'Connectivity should be in 0...1' unless (0...1).include? options[:connectivity]
+  }
+  opts.on('--gdump FILENAME', 'dump initial execution graph to the file specified') { |o|
+    options[:gdump] = o
+  }
+}.parse!
+
+log.info 'generating graph'
+graph = RGL::DirectedAdjacencyGraph.new
+created_vertices = {}
+options[:count].times { |i|
+  name = "v#{i}"
+  deps_count = rand(0..(created_vertices.size * options[:connectivity]))
+  deps = created_vertices.keys.sample(deps_count || 0)
+  created_vertices[name] = {
+    'sleep' => rand(options[:delay]),
+    'dependencies' => deps
+  }
+  deps.each { |dep|
+    graph.add_edge name, dep
+  }
+  print '.'
+}
+puts ''
+
+log.info "saving graph to #{options[:file]}"
+File.open(options[:file], 'w+') { |f|
+  f.write YAML.dump created_vertices
+}
+
+unless options[:gdump].nil?
+  log.info "dumping graph's image to #{options[:gdump]}"
+  graph.write_to_graphic_file(options[:gdump].split('.').last, options[:gdump].split('.')[...-1].join('.'))
+end
+
+log.info "graph config is saved to #{options[:file]}"
