@@ -5,6 +5,9 @@ module ExcADG
   module Assertions
     class << self
       # asserts that all vars are instances of one of the clss
+      # @param vars array or a single variable to check
+      # @param clss array or a single class to check against
+      # @raise StandardError if any of vars are not of clss
       def is_a? vars, clss
         return if vars.is_a?(Array) && clss == Array
 

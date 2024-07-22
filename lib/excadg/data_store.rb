@@ -35,8 +35,8 @@ module ExcADG
       @by_vertex[new.vertex] = new if new.vertex
     end
 
-    # retrieves VStateData by key
-    # @param key either Vertex or VStateData::Key to retrieve Full state data
+    # retrieves {VStateData} by key
+    # @param key {Vertex} or {VStateData::Key} or vertex name (String || Symbol) to retrieve Full state data
     # @return VStateData::Full for the respective key
     # @raise StandardError if key is not of a supported type
     def [] key
