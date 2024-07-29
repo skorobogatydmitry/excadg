@@ -6,6 +6,9 @@ require 'io/console'
 require_relative 'broker'
 require_relative 'state_machine'
 
+require_relative 'tui/format'
+require_relative 'tui/block'
+
 module ExcADG
   # render status on the screen
   module Tui
@@ -38,10 +41,10 @@ module ExcADG
       def print_in_box content
         clear
         refresh_sizes
-        print "+-#{'-' * @content_size[:width]}-+\n"
+        print "┏─#{'─' * @content_size[:width]}─┓\n"
         content[..@content_size[:height]].each { |line|
           if line.size > @content_size[:width]
-            printf @line_template, "#{line[...(@content_size[:width] - 3)]}..."
+            printf @line_template, "#{line[...(@content_size[:width] - 1)]}░"
           else
             printf @line_template, line
           end
@@ -51,7 +54,7 @@ module ExcADG
         else
           printf @line_template, '<some content did not fit and was cropped>'[..@content_size[:width]]
         end
-        print "+-#{'-' * @content_size[:width]}-+\n"
+        print "┗─#{'─' * @content_size[:width]}─┛\n"
       end
 
       def print_summary has_failed, timed_out
@@ -81,7 +84,7 @@ module ExcADG
           height: box_size[:height] - 4, # 2 for borders, 1 for \n, 1 for remark
           width: box_size[:width] - 5 # 2 for borders, 2 to indent
         }.freeze
-        @line_template = "| %-#{@content_size[:width]}s |\n"
+        @line_template = "│ %-#{@content_size[:width]}s │\n"
       end
 
       # make states summary, one for a line with consistent placing
