@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'format'
+
 module ExcADG::Tui
   # basic TUI building block;
   # in a nutshell, it's a column, as {String}s in it are printed vertically one by one (see {#to_s});
@@ -35,7 +37,7 @@ module ExcADG::Tui
           blk.h_pad!(extra_columns / 2)
           extra_columns.odd? ? blk.collect! { |line| line + ' ' } : blk
         end
-        blk.v_align!.array # get the array to join using builtin flatten
+        blk.array # get the array to join using builtin flatten
       }.flatten!
     end
 
@@ -60,7 +62,7 @@ module ExcADG::Tui
           col.v_pad!(extra_lines / 2)
           col << '' if extra_lines.odd?
         end
-        col.v_align!
+        col.v_align! # is needed due to transpose call below
         col.array # get the array to process using builtin methods
       }.transpose.collect(&:join)
     end

@@ -1,13 +1,12 @@
-# frozen_string_literal: true
-
 require 'date'
 require 'io/console'
 
 require_relative 'broker'
 require_relative 'state_machine'
 
-require_relative 'tui/format'
+require_relative 'tui/assets'
 require_relative 'tui/block'
+require_relative 'tui/format'
 
 module ExcADG
   # render status on the screen
@@ -24,7 +23,10 @@ module ExcADG
         Log.info 'spawning tui'
         @thread = Thread.new {
           loop {
-            print_in_box stats
+            # print_in_box stats
+            clear
+            refresh_sizes
+            print stats
             sleep DELAY
           }
         }
@@ -32,43 +34,32 @@ module ExcADG
 
       def summarize has_failed, timed_out
         @thread.kill
-        print_in_box stats + (print_summary has_failed, timed_out)
-      end
-
-      private
-
-      # @param content is a list of lines to print
-      def print_in_box content
         clear
-        refresh_sizes
-        print "┏─#{'─' * @content_size[:width]}─┓\n"
-        content[..@content_size[:height]].each { |line|
-          if line.size > @content_size[:width]
-            printf @line_template, "#{line[...(@content_size[:width] - 1)]}░"
-          else
-            printf @line_template, line
-          end
-        }
-        if content.size < @content_size[:height]
-          (@content_size[:height] - content.size).times { printf @line_template, ' ' }
-        else
-          printf @line_template, '<some content did not fit and was cropped>'[..@content_size[:width]]
-        end
-        print "┗─#{'─' * @content_size[:width]}─┛\n"
+        print stats summary: get_summary(has_failed, timed_out)
       end
 
-      def print_summary has_failed, timed_out
+      # private
+
+      def get_summary has_failed, timed_out
         [timed_out ? 'execution timed out' : 'execution completed',
          "#{has_failed ? 'some' : 'no'} vertices failed"]
       end
 
       # make summary paragraph on veritces
-      def stats
-        [
-          "time spent (ms): #{DateTime.now.strftime('%Q').to_i - @started_at}",
-          "vertices seen: #{Broker.data_store.size}",
-          'progress:'
-        ] + state_stats.collect { |line| "  #{line}" }
+      def stats summary: nil
+        Block.column(
+          Block.column(summary || 'running').h_pad!(1).box!.v_align!(:center, width: @content_size[:width]),
+          Block.column(
+            *[
+              "time spent (ms): #{DateTime.now.strftime('%Q').to_i - @started_at}",
+              "vertices seen: #{Broker.data_store.size}",
+              'progress:'
+            ] + state_stats,
+            align: :left
+          ).h_pad!(2),
+          align: :left
+        ).fit!(width: @content_size[:width], height: @content_size[:height], fill: true)
+             .box!(corners: :sharp)
       end
 
       def clear
@@ -96,13 +87,11 @@ module ExcADG
                                       .collect { |state, vertices| [state, vertices_stats(vertices)] }
                                       .to_h
         # rubocop:enable Style/HashTransformValues
-        filled.collect { |k, v| format '%-10s: %s', k, "#{v.empty? ? '<none>' : v}" }
+        filled.collect { |k, v| format '  %-10s: %s', k, "#{v.empty? ? '<none>' : v}" }
       end
 
       def vertices_stats vertice_pairs
-        full_list = vertice_pairs.collect(&:name)
-        addition = full_list.size > MAX_VERTEX_TO_SHOW ? "... and #{full_list.size - MAX_VERTEX_TO_SHOW} more" : ''
-        full_list[0...MAX_VERTEX_TO_SHOW].join(', ') + addition
+        vertice_pairs.collect(&:name).join(', ')
       end
     end
   end

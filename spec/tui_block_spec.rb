@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'timeout'
 
 module ExcADG::Tui
@@ -143,7 +141,7 @@ module ExcADG::Tui
         original_width = block.width
         original_height = block.height
 
-        block.pad(3) { block }
+        block.pad!(3) { block }
         expect(block.height).to eq original_height + 6
         expect(block.width).to eq original_width + 6
         original_widths.each_with_index { |e, idx|
@@ -188,6 +186,30 @@ module ExcADG::Tui
           expect(line).to include original_array[idx]
         }
       end
+      it 'extends to width specified' do
+        original_array = block.array.clone
+        original_width = block.width
+        same_block = block.v_align! width: block.width + 5
+
+        expect(same_block).to eq block
+        expect(block.width).to eq original_width + 5
+        block.array.each_with_index { |line, idx|
+          expect(line.size).to eq block.width
+          expect(line).to start_with original_array[idx]
+        }
+      end
+      it 'does not crop block' do
+        original_array = block.array.clone
+        original_width = block.width
+        same_block = block.v_align! width: block.width - 5
+
+        expect(same_block).to eq block
+        expect(block.width).to eq original_width
+        block.array.each_with_index { |line, idx|
+          expect(line.size).to eq block.width
+          expect(line).to start_with original_array[idx]
+        }
+      end
     end
     context 'boxing tests' do
       it 'adds 1 space around' do
@@ -209,8 +231,9 @@ module ExcADG::Tui
 
         expect(block.width).to eq original_width - 3
         expect(block.height).to eq original_height - 2
+        expect(block.width).to eq block.array.collect(&:size).max
 
-        expect(block.array.last[-1]).to eq '🮦'
+        expect(block.array.last[-1]).to eq '░'
         expect(block.array.first[-1]).to eq '░'
       end
       it 'does not touch content if it fits' do
@@ -221,6 +244,50 @@ module ExcADG::Tui
 
         expect(block.width).to eq original_width
         expect(block.height).to eq original_height
+        expect(block.width).to eq block.array.collect(&:size).max
+      end
+      it 'crops only width' do
+        original_width = block.width
+        original_height = block.height
+        last_line = block.array.last
+
+        block.fit! width: original_width - 3
+
+        expect(block.width).to eq original_width - 3
+        expect(block.height).to eq original_height
+        expect(block.width).to eq block.array.collect(&:size).max
+
+        expect(block.array.last).to eq last_line
+        expect(block.array.first[-1]).to eq '░'
+      end
+      it 'crops only height' do
+        original_width = block.width
+        original_height = block.height
+        first_line = block.array.first
+
+        block.fit! height: original_height - 2
+
+        expect(block.width).to eq original_width
+        expect(block.height).to eq original_height - 2
+        expect(block.width).to eq block.array.collect(&:size).max
+
+        expect(block.array.last[-1]).to eq '░'
+        expect(block.array.first).to eq first_line
+      end
+      it 'fills if asked to' do
+        original_width = block.width
+        original_height = block.height
+
+        block.fit! width: original_width + 1, height: original_height + 1, fill: true
+
+        expect(block.width).to eq original_width + 1
+        expect(block.height).to eq original_height + 1
+        expect(block.width).to eq block.array.collect(&:size).max
+
+        block.array.each { |line|
+          expect(line).to end_with ' '
+        }
+        expect(block.array.last.delete(' ')).to be_empty
       end
     end
   end
