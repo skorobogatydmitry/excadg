@@ -11,3 +11,4 @@ doc/
 *.log
 *.png
 *.yaml
+!config/*.yaml

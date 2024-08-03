@@ -9,6 +9,10 @@ module ExcADG::Tui
       expect(block.height).to eq 4
       expect(block.to_s).to eq block.array.join("\n")
     end
+    it 'casts argument to string by default' do
+      b = Block.new :some
+      expect(b.array.first).to eq :some.to_s
+    end
     it 'appends lines' do
       newb = block << '1' * 12
       expect(newb).to eq block

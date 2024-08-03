@@ -13,11 +13,15 @@ module ExcADG
       @self = Ractor.current
     end
 
+    def to_s
+      "#{self.class} from #{@self}"
+    end
+
     # request to get state data
     class GetStateData < ExcADG::Request
       attr_reader :deps
 
-      # @param deps Array of VStateData::Key
+      # @param deps {Array} of VStateData::Key
       def initialize deps: nil
         super()
         @deps = deps

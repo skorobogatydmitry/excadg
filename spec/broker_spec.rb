@@ -69,7 +69,7 @@ module ExcADG
           expect(dcurr_ractor).to receive(:send)
             .with(satisfy { |args|
                     expect(args).to be_a Broker::RequestProcessingFailed
-                    expect(args.cause).to be_a Broker::UnknownRequestType
+                    expect(args.message).to eq 'ExcADG::Broker::UnknownRequestType'
                   })
           Broker.send :process_request
         end
@@ -87,9 +87,7 @@ module ExcADG
           allow(ddata_store).to receive(:to_a).and_return %i[some other]
           expect(drequest).to receive(:filter?).and_return false
           expect(dcurr_ractor).to receive(:send)
-            .with(satisfy { |args|
-                    expect(args).to eq %i[some other]
-                  })
+            .with %i[some other]
           Broker.send :process_request
         end
         it 'processes request with filters' do
@@ -97,9 +95,7 @@ module ExcADG
           expect(drequest).to receive(:filter?).and_return true
           expect(drequest).to receive(:deps).and_return [:other]
           expect(dcurr_ractor).to receive(:send)
-            .with(satisfy { |args|
-                    expect(%i[some]).to eq args
-                  })
+            .with %i[some]
           Broker.send :process_request
         end
 
@@ -109,8 +105,20 @@ module ExcADG
           expect(dcurr_ractor).to receive(:send)
             .with(satisfy { |args|
                     expect(args).to be_a Broker::RequestProcessingFailed
-                    expect(args.cause).to eq error
+                    expect(args.message).to eq 'StandardError'
                   })
+          Broker.send :process_request
+        end
+        it 'tracks request' do
+          deps = :mocked_deps
+          dvtracker = double(VTracker)
+          Broker.instance_variable_set :@vtracker, dvtracker
+          expect(dvtracker).to receive(:track).with(dcurr_ractor, deps).exactly 1
+
+          allow(ddata_store).to receive(:to_a).and_return %i[some other]
+          expect(drequest).to receive(:filter?).and_return false
+          expect(drequest).to receive(:deps).and_return deps
+          expect(dcurr_ractor).to receive(:send)
           Broker.send :process_request
         end
       end
@@ -131,6 +139,17 @@ module ExcADG
         it 'updates data store' do
           expect(ddata_store).to receive(:<<).with dvstate_data
           expect(dcurr_ractor).to receive(:send)
+            .with true
+          Broker.send :process_request
+        end
+
+        it 'tracks request' do
+          dvtracker = double(VTracker)
+          Broker.instance_variable_set :@vtracker, dvtracker
+          expect(dvtracker).to receive(:track).with(dcurr_ractor).exactly 1
+
+          expect(ddata_store).to receive(:<<).with dvstate_data
+          expect(dcurr_ractor).to receive(:send)
             .with(satisfy { |args|
                     expect(args).to eq true
                   })
@@ -143,6 +162,7 @@ module ExcADG
         subject(:dvstate_data) { double VStateData::Full }
         subject(:dnew_vpayload) { double Payload }
         subject(:dvertex_cls) { class_double(Vertex).as_stubbed_const(transfer_nested_constants: true) }
+        subject(:dvresult) { double Vertex }
 
         before {
           allow(Request::AddVertex).to receive(:===).with(drequest) { true }
@@ -151,14 +171,29 @@ module ExcADG
           allow(drequest).to receive(:data).with(no_args).and_return dvstate_data
           allow(drequest).to receive(:payload).with(no_args).and_return dnew_vpayload
         }
-        it 'make a vertex' do
+        it 'makes a vertex' do
           expect(dcurr_ractor).to receive(:send)
-            .with nil
+            .with dvresult
           expect(dvertex_cls).to receive(:new)
             .with(satisfy { |args|
               expect(args[:payload]).to eq dnew_vpayload
               expect(args[:deps].first).to eq dcurr_ractor
-            })
+            }).and_return dvresult
+          Broker.send :process_request
+        end
+
+        it 'tracks request' do
+          dvtracker = double(VTracker)
+          Broker.instance_variable_set :@vtracker, dvtracker
+          expect(dvtracker).to receive(:track).with(dvresult).exactly 1
+
+          expect(dcurr_ractor).to receive(:send)
+            .with dvresult
+          expect(dvertex_cls).to receive(:new)
+            .with(satisfy { |args|
+              expect(args[:payload]).to eq dnew_vpayload
+              expect(args[:deps].first).to eq dcurr_ractor
+            }).and_return dvresult
           Broker.send :process_request
         end
       end
@@ -168,12 +203,22 @@ module ExcADG
       it 'spawns request processing thread' do
         expect(Broker.run).to be_a Thread
       end
+      it 'does not enables tracking by default' do
+        Broker.run
+        expect(Broker.vtracker).to be_nil
+      end
       context 'with double spawn' do
         subject(:first) { Broker.run }
         subject(:second) { Broker.run }
 
         it 'returns the same thread' do
           expect(first).to eq second
+        end
+      end
+      context 'with enabled tracking' do
+        before { Broker.run track: true }
+        it 'has vtracker' do
+          expect(Broker.vtracker).to be_a VTracker
         end
       end
     end
@@ -192,7 +237,14 @@ module ExcADG
         Broker.instance_variable_set :@data_store, ddata_store
       }
 
+      it 'waits if there are no vertices yet' do
+        expect(ddata_store).to receive(:empty?).and_return(true).at_least 1
+        t = Broker.wait_all period: 0.2, timeout: 1
+        expect { t.join }.to raise_error Timeout::Error
+      end
+
       it 'waits for all vertices to report terminal state' do
+        expect(ddata_store).to receive(:empty?).and_return(false).at_least 1
         expect(ddata_store).to receive(:to_a).and_return(
           [done_state, undone_state, failed_state],
           [done_state, undone_state],
@@ -205,6 +257,7 @@ module ExcADG
       end
 
       it 'times out' do
+        expect(ddata_store).to receive(:empty?).and_return(false).at_least 1
         expect(ddata_store).to receive(:to_a).and_return([undone_state]).at_least 5
         t = Broker.wait_all timeout: 1, period: 0.1
         expect(t.alive?).to eq true

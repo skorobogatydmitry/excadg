@@ -9,7 +9,7 @@ module ExcADG::Tui
   module Format
     # add horizontal padding to the block
     # @param size number of spaces to add
-    def h_pad! size
+    def h_pad! size = 1
       @array.collect! { |row|
         "#{' ' * size}#{row}#{' ' * size}"
       }
@@ -19,7 +19,7 @@ module ExcADG::Tui
 
     # add vertical padding to the block
     # @param size number of spaces to add
-    def v_pad! size
+    def v_pad! size = 1
       filler = ' ' * @width
       size.times {
         self >> filler
@@ -30,7 +30,7 @@ module ExcADG::Tui
 
     # adds spaces around the block
     # @param size number of spaces to add
-    def pad! size
+    def pad! size = 1
       v_pad! size
       h_pad! size
     end

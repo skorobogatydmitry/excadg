@@ -43,7 +43,7 @@ OptionParser.new { |opts|
   opts.on('-d', '--dump FILENAME', 'dump all vertices state data to the file in the end') { |o|
     options[:dump] = o
   }
-  opts.on('--gdump FILENAME', 'dump initial execution graph to the file specified') { |o|
+  opts.on('--gdump FILENAME', 'dump final execution graph to the file specified') { |o|
     options[:gdump] = o
   }
   opts.on('-t', '--timeout SECONDS', 'for how long to wait for the vertices to execute') { |o|
@@ -75,31 +75,23 @@ raise ArgumentError, 'at least one vertex should be ready to start' if runnable_
 
 ExcADG::Log.info 'collect execution graph from config'
 
-all_vertex_names = config.keys.collect!(&:to_sym)
-graph = RGL::DirectedAdjacencyGraph.new
 config.each_pair { |id, vconfig|
   name = id.to_sym
   payload = if vconfig&.key?('command')
               ExcADG::Payload::Wrapper::Bin.new args: vconfig['command']
             elsif vconfig&.key?('sleep')
               ExcADG::Payload::Example::Sleepy.new args: vconfig['sleep'].to_i
+            elsif vconfig&.key?('fail')
+              ExcADG::Payload::Example::Faulty.new args: vconfig['fail'] || 'injected failure'
             else
               ExcADG::Payload::Example::Echo.new args: vconfig
             end
   deps_v_names = (vconfig&.dig('dependencies') || []).collect(&:to_sym)
-  deps_v_names.each { |dep|
-    raise "there is no dependency named '#{dep}' in the graph for vertex '#{id}'" unless all_vertex_names.include? dep
-
-    graph.add_edge name, dep
-  }
-
   ExcADG::Vertex.new name:, payload:, deps: deps_v_names
 }
 
-graph.write_to_graphic_file(options[:gdump].split('.').last, options[:gdump].split('.')[...-1].join('.')) unless options[:gdump].nil?
-
 ExcADG::Log.info 'starting state data broker'
-ExcADG::Broker.run
+ExcADG::Broker.run track: true
 
 ui_drawer&.run
 
@@ -111,10 +103,9 @@ rescue Timeout::Error
   ExcADG::Log.error 'execution timed out'
   timed_out = true
 end
-vertice_by_state = ExcADG::Broker.data_store.to_a.group_by(&:state)
 
-ExcADG::Log.info "#{vertice_by_state[:done]&.size || 0} done, #{vertice_by_state[:failed]&.size || 0} failed"
-has_failed = !vertice_by_state[:failed].nil?
+ExcADG::Log.info "vertice counts by state: #{ExcADG::Broker.vtracker.by_state.transform_values(&:size)}"
+has_failed = ExcADG::Broker.vtracker.by_state.key? :failed
 ui_drawer&.summarize has_failed, timed_out
 
 unless options[:dump].nil?
@@ -123,6 +114,8 @@ unless options[:dump].nil?
     f.write JSON.dump ExcADG::Broker.data_store.to_a
   }
 end
+
+ExcADG::Broker.vtracker.graph.write_to_graphic_file(options[:gdump].split('.').last, options[:gdump].split('.')[...-1].join('.')) unless options[:gdump].nil?
 
 sleep 0.1 # let the logger to print message
 exit_code = 0

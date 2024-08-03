@@ -47,7 +47,26 @@ module ExcADG
 
       expect(vtracker.graph.vertices).to eq [dvmain, dvdep]
     end
+    it 'allows to track vertices without deps' do
+      allow(dvmain).to receive(:state).and_return :done
 
+      vtracker.track dvmain
+
+      expect(vtracker.graph.vertices).to eq [dvmain]
+    end
+    it 'links hanging vertices if they appear as deps' do
+      allow(dvmain).to receive(:state).and_return :new
+      allow(dvdep).to receive(:state).and_return :done
+      allow(dvdep_data).to receive(:state).and_return :done
+
+      vtracker.track dvdep
+      expect(vtracker.graph.vertices).to eq [dvdep]
+
+      vtracker.track dvmain, [dvdep]
+
+      expect(vtracker.graph.vertices).to eq [dvdep, dvmain]
+      expect(vtracker.graph.adjacent_vertices(dvmain)).to eq [dvdep]
+    end
     it 'ignores vertices without state' do
       allow(dvmain).to receive(:state).and_return nil
       allow(dvmain_data).to receive(:state).and_return nil
@@ -55,6 +74,19 @@ module ExcADG
       vtracker.track dvmain, %i[one two]
 
       expect(vtracker.graph.vertices).to eq []
+    end
+    it 'returns dependencies if any' do
+      allow(dvmain).to receive(:state).and_return :new
+      allow(dvdep).to receive(:state).and_return :done
+      allow(dvdep_data).to receive(:state).and_return :done
+
+      vtracker.track dvmain, [dvdep]
+
+      expect(vtracker.graph.vertices).to eq [dvmain, dvdep]
+      expect(vtracker.graph.adjacent_vertices(dvmain)).to eq [dvdep]
+
+      expect(vtracker.get_deps(dvmain)).to eq [dvdep]
+      expect(vtracker.get_deps(dvdep)).to be_empty
     end
   end
 end

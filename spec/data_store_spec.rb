@@ -55,15 +55,15 @@ module ExcADG
     end
 
     it 'maintains size' do
-      expect(store.size).to eq 3
+      expect(store.instance_variable_get(:@size)).to eq 3
       store << vstate_data_list.last
-      expect(store.size).to eq 4
+      expect(store.instance_variable_get(:@size)).to eq 4
       store << vstate_data_list.last
-      expect(store.size).to eq 4
+      expect(store.instance_variable_get(:@size)).to eq 4
     end
 
     it 'returns uniq values' do
-      expect(store.to_a.size).to eq store.size
+      expect(store.to_a.size).to eq store.instance_variable_get :@size
     end
 
     it 'rejects renames' do

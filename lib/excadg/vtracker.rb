@@ -21,20 +21,27 @@ module ExcADG
     # register the vertex and its new known deps in the @graph and by_state cache
     # @param vertice vertice that requested info about deps
     # @param deps list of dependencies as supplied by {Request::GetStateData}
-    def track vertex, deps
+    def track vertex, deps = []
       Assertions.is_a? vertex, Vertex
       Assertions.is_a? deps, Array
 
+      @graph.add_vertex vertex
       add_to_states_cache vertex, vertex.state
 
       deps.each { |raw_dep|
-        # it could be not Vertex, so do a lookup through data store
+        # it could be not a Vertex, so do a lookup through data store
         next unless Broker.data_store[raw_dep]
 
         dep_data = Broker.data_store[raw_dep]
         add_to_states_cache dep_data.vertex, dep_data.state
         @graph.add_edge vertex, dep_data.vertex
       }
+    end
+
+    # get all vertex's dependencies
+    # @param vertex {Vertex} vertex to lookup known dependencies for
+    def get_deps vertex
+      @graph.adjacent_vertices vertex
     end
 
     private

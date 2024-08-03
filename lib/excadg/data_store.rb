@@ -6,8 +6,6 @@ require_relative 'vstate_data'
 module ExcADG
   # collection of {ExcADG::VStateData} for {ExcADG::Broker}
   class DataStore
-    attr_reader :size
-
     def initialize
       # two hashes to store VStateData and access them fast by either key
       @by_name = {}
@@ -73,6 +71,10 @@ module ExcADG
       else
         false
       end
+    end
+
+    def empty?
+      @size.zero?
     end
 
     class DataSkew < StandardError; end

@@ -1,0 +1,20 @@
+# this example demonstrates cascade errors handling
+# command: ./bin/excadg --graph config/faulty.yaml -l faulty.log -d faulty.json --gdump faulty.jpg
+
+v0:
+  message: this vertex passes immediately
+v1:
+  fail: this vertex fails with this message
+v2:
+  message: this vertex depends on a failing vertex so it fails
+  dependencies:
+    - v0
+    - v1
+v3:
+  message: this vertex depends on v2 which has failing dep so it fails too
+  dependencies:
+    - v2
+v4:
+  message: this vertex depends on a passing vertex so it passes
+  dependencies:
+    - v0

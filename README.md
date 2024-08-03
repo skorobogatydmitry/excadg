@@ -97,7 +97,7 @@ Internally, each vertice go through a sequence of states. Now it's **new**, **re
 {ExcADG::Vertex} starts as a **new** vertex and waits for its dependencies.  
 When vertex received all dependencies states and made sure they're **done**, it becomes **ready** and starts its payload.  
 When payload finishes, the vertex transitions to the **done** state.  
-If any of the stages fails, the vertex becomes **failed**. It could happen as due to a failed dependency (a stage failed) as well as any other error occurred (e.g. it receives an incorrect data from broker). A single failed vertex makes all vertices depending on it to fail. This way a failures cascading through the graph.
+If any of the stages fails, the vertex becomes **failed**. It could happen as due to a failed dependency (a stage failed) as well as any other error occurred (e.g. it receives an incorrect data from broker). A single failed vertex makes all vertices depending on it to fail. This way [failures cascading through the graph](config/faulty.yaml).
 
 ## {ExcADG::Broker}
 

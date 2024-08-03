@@ -116,11 +116,11 @@ module ExcADG::Tui
     # {#column} and {#row} are enough to make blocks;
     # in case you need to align a single block, use e.g. `Block.column("one", "two") { |blk| blk.box!.pad! 2 }`
     def initialize arg
-      case arg
-      when Array then @array = arg
-      when String then @array = [arg]
-      else raise "can't make block from #{arg.class}"
-      end
+      @array = case arg
+               when Array then arg
+               when String then [arg]
+               else [arg.to_s]
+               end
       @width = @array.collect(&:size).max
     end
   end

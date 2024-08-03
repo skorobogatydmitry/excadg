@@ -30,8 +30,14 @@ module ExcADG
       info&.dig(0).to_i || -1
     end
 
+    # only main ractor could try to get real symbolic vertex name and state
+    # other ractors (e.g. logger) could only use builtin data
     def to_s
-      "#{number} #{status}"
+      if Ractor.current == Ractor.main
+        "#{name || number} #{state || status}"
+      else
+        "#{number} #{status}"
+      end
     end
 
     # below are shortcut methods to access Vertex data from the main Ractor
@@ -39,7 +45,7 @@ module ExcADG
     # obtains current Vertex-es data by lookup in the Broker's data,
     # available from the main Ractor only
     def data
-      Broker.data_store[self]
+      Broker.data_store&.[](self)
     end
 
     # gets current Vertex's state,
