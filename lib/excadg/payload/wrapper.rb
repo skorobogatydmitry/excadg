@@ -13,21 +13,20 @@ module ExcADG
       include Payload
       def get
         lambda { |deps_data|
-          begin
-            f = nil
             Dir.mktmpdir { |dir|
-              f = File.new File.join(dir, 'data.json'), 'w+'
-              f.write JSON.generate deps_data
-              f.flush
-              stdout, stderr, status = Open3.capture3({ 'DEPS_DATAFILE' => f.path }, args)
+              Log.debug "temp dir #{} for data is ready"
+              stdout, stderr, status = File.open(File.join(dir, 'data.json'), 'w+') { |f|
+                f.write JSON.generate deps_data
+                f.flush
+                Log.debug "data is in #{f.path}"
+                Open3.capture3({ 'DEPS_DATAFILE' => f.path }, args)
+              }
+              Log.debug "payload process finished"
               data = { stdout:, stderr:, exitcode: status.exitstatus }
               raise CommandFailed, data unless status.exitstatus.zero?
-
+              Log.debug "returning data"
               data
             }
-          ensure
-            f&.close
-          end
         }
       end
 

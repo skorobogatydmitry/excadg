@@ -1,6 +1,6 @@
 Gem::Specification.new { |s|
   s.name                  = 'excadg'
-  s.version               = '0.3.0'
+  s.version               = '0.4.0'
   s.summary               = 'Execute Acyclic Directed Graph'
   s.authors               = ['skorobogatydmitry']
   s.description           = File.read('README.md')[/(?<=# Description)[^#]+/].chomp

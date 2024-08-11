@@ -48,7 +48,6 @@ RSpec.configure { |config|
                                 perf: true, # exclude perf tests by default
                                 uses: lambda { |v|
                                         [
-                                          :broker_data, # TODO: find a way to isolate class data
                                           :payload, # payload tests require a full-featured runs
                                           :ractor # low-level tests involving Ractors
                                         ].include? v

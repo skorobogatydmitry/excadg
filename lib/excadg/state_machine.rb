@@ -55,6 +55,7 @@ module ExcADG
       edge = GRAPH.edges.find { |e| e.source == @state && e.target = target }
 
       with_fault_processing {
+        Log.debug "calling payload for #{edge}"
         @state_transition_data[target] = @state_edge_bindings[edge].call
         @state = target
         Log.debug "moved to #{@state}"
@@ -66,7 +67,7 @@ module ExcADG
     def with_fault_processing
       yield if block_given?
     rescue StandardError => e
-      Log.error "step failed with #{e} / #{e.backtrace}"
+      Log.error "step failed with '#{e}' / #{e.backtrace}"
       @state_transition_data[:failed] = e
       @state = :failed
     ensure

@@ -7,7 +7,10 @@ module ExcADG
   # rubocop:disable Style/BlockDelimiters
   describe Vertex do
     before(:all) {
-      Broker.run
+      Broker.instance.start
+    }
+    after(:all) {
+      Broker.instance.teardown
     }
 
     context 'base features' do
@@ -15,7 +18,7 @@ module ExcADG
         @a = Vertex.new payload: Payload::Example::Echo.new(args: :a)
         @b = Vertex.new payload: Payload::Example::Echo.new(args: :b), name: :custom_name
         @list = [@a, @b]
-        sleep 0.1 until @list.all? { |e| Broker.data_store.key? e }
+        sleep 0.1 until @list.all? { |e| Broker.instance.data_store.key? e }
         @ra = @a.data.vertex
         @rb = @b.data.vertex
       }
@@ -34,8 +37,8 @@ module ExcADG
         expect(@b).not_to eq(@a)
       end
       it 'should bookkeep all vertices' do
-        expect(Broker.data_store.key?(@a)).to eq true
-        expect(Broker.data_store.key?(@b)).to eq true
+        expect(Broker.instance.data_store.key?(@a)).to eq true
+        expect(Broker.instance.data_store.key?(@b)).to eq true
       end
       it 'subtracts from list' do
         expect(@list - [@a]).to eq [@b]
@@ -56,47 +59,57 @@ module ExcADG
       end
     end
     context 'with timeout set' do
-      subject(:sleep_1) { Payload::Example::Sleepy.new(args: 1) }
-      it 'times out with plain timeout' do
-        v = Vertex.new timeout: 0.1, payload: sleep_1
-        loop {
-          sleep 0.1
-          raise "unexpected: #{v.state}" if v.state.eql? :done
-          break if v.state.eql? :failed
-        }
-        expect(v.data.data).to be_a RTimeout::TimedOutError
+      shared_examples 'timing out vertex' do
+        it 'times out with plain timeout' do
+          v = Vertex.new timeout: 0.1, payload: subject
+          loop {
+            sleep 0.1
+            raise "unexpected: #{v.state}" if v.state.eql? :done
+            break if v.state.eql? :failed
+          }
+          expect(v.data.data).to be_a RTimeout::TimedOutError
+        end
+
+        it 'times out with global timeout only' do
+          v = Vertex.new timeout: VTimeout.new(global: 0.1), payload: subject
+          loop {
+            sleep 0.1
+            raise "unexpected: #{v.state}" if v.state.eql? :done
+            break if v.state.eql? :failed
+          }
+          expect(v.data.data).to be_a RTimeout::TimedOutError
+        end
+
+        it 'times out with payload timeout only' do
+          v = Vertex.new timeout: VTimeout.new(payload: 0.1), payload: subject
+          loop {
+            sleep 0.1
+            raise "unexpected: #{v.state}" if v.state.eql? :done
+            break if v.state.eql? :failed
+          }
+          expect(v.data.data).to be_a RTimeout::TimedOutError
+        end
+
+        it 'times out with deps timeout only' do
+          long_dep = Vertex.new payload: subject
+          v = Vertex.new timeout: VTimeout.new(deps: 0.1), payload: Payload::Example::Echo.new, deps: [long_dep]
+          loop {
+            sleep 0.1
+            raise "unexpected: #{v.state}" if v.state.eql? :done
+            break if v.state.eql? :failed
+          }
+          expect(v.data.data).to be_a RTimeout::TimedOutError
+        end
       end
 
-      it 'times out with global timeout only' do
-        v = Vertex.new timeout: VTimeout.new(global: 0.1), payload: sleep_1
-        loop {
-          sleep 0.1
-          raise "unexpected: #{v.state}" if v.state.eql? :done
-          break if v.state.eql? :failed
-        }
-        expect(v.data.data).to be_a RTimeout::TimedOutError
-      end
+      it_behaves_like('timing out vertex') {
+        subject { Payload::Example::Sleepy.new(args: 1) }
+      }
 
-      it 'times out with payload timeout only' do
-        v = Vertex.new timeout: VTimeout.new(payload: 0.1), payload: sleep_1
-        loop {
-          sleep 0.1
-          raise "unexpected: #{v.state}" if v.state.eql? :done
-          break if v.state.eql? :failed
-        }
-        expect(v.data.data).to be_a RTimeout::TimedOutError
-      end
-
-      it 'times out with deps timeout only' do
-        long_dep = Vertex.new payload: sleep_1
-        v = Vertex.new timeout: VTimeout.new(deps: 0.1), payload: Payload::Example::Echo.new, deps: [long_dep]
-        loop {
-          sleep 0.1
-          raise "unexpected: #{v.state}" if v.state.eql? :done
-          break if v.state.eql? :failed
-        }
-        expect(v.data.data).to be_a RTimeout::TimedOutError
-      end
+      # TODO: find a command that hangs on I/O
+      # it_behaves_like('timing out vertex') {
+      #   subject { Payload::Wrapper::Bin.new args: 'ncat -l 12345' }
+      # }
     end
 
     context 'with faulty payload' do

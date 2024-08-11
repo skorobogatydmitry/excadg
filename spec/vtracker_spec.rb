@@ -6,7 +6,8 @@ module ExcADG
     subject(:dvmain_data) { double VStateData::Full }
     subject(:dvdep) { double Vertex }
     subject(:dvdep_data) { double VStateData::Full }
-    subject(:dbroker) { class_double(Broker).as_stubbed_const(transfer_nested_constants: true) }
+    subject(:dbroker_cls) { class_double(Broker).as_stubbed_const(transfer_nested_constants: true) }
+    subject(:dbroker) { double Broker }
     subject(:ddata_store) { double DataStore }
     subject(:vtracker) { VTracker.new }
 
@@ -16,6 +17,7 @@ module ExcADG
       allow(dvmain).to receive(:is_a?).with(Array).and_return false
       allow(dvdep).to receive(:is_a?).with(Array).and_return false
 
+      allow(dbroker_cls).to receive(:instance).and_return dbroker
       allow(dbroker).to receive(:data_store).and_return ddata_store
       %i[one two three four].each { |ghost_dep|
         allow(ddata_store).to receive(:'[]').with(ghost_dep).and_return nil
@@ -73,7 +75,7 @@ module ExcADG
 
       vtracker.track dvmain, %i[one two]
 
-      expect(vtracker.graph.vertices).to eq []
+      expect(vtracker.graph.vertices).to eq [dvmain]
     end
     it 'returns dependencies if any' do
       allow(dvmain).to receive(:state).and_return :new

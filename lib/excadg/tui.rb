@@ -21,6 +21,7 @@ module ExcADG
       # spawns a thread to show stats to console in background
       def run
         Log.info 'spawning tui'
+        Thread.report_on_exception = false
         @thread = Thread.new {
           loop {
             # print_in_box stats
@@ -53,7 +54,7 @@ module ExcADG
             Block.column(
               *[
                 "🮚  time spent (ms): #{DateTime.now.strftime('%Q').to_i - @started_at}",
-                "#  vertices seen: #{Broker.vtracker.graph.vertices.size}",
+                "#  vertices seen: #{Broker.instance.vtracker.graph.vertices.size}",
                 '🮶  progress:'
               ] + state_stats,
               align: :left
@@ -80,25 +81,28 @@ module ExcADG
       # make states summary, one for a line with consistent placing
       def state_stats
         skeleton = StateMachine::GRAPH.vertices.collect { |v| [v, []] }.to_h
-        filled = skeleton.merge(Broker.vtracker.by_state.transform_values { |vertices| vertices.collect(&:name).join(', ') })
+        filled = skeleton.merge(Broker.instance.vtracker.by_state.transform_values { |vertices| vertices.collect(&:name).join(', ') })
         filled.collect { |k, v| format '  %-10s: %s', k, "#{v.empty? ? '<none>' : v}" }
       end
 
       # gather pending vertices (in :new state) from the tracker
       # and render dependencies they're waiting for
       def pending_vertices
-        return nil if Broker.vtracker.nil?
-        return Block.column('... no pending vertices').h_pad! if Broker.vtracker.by_state[:new].nil? || Broker.vtracker.by_state[:new].empty?
+        return nil if Broker.instance.vtracker.nil?
+        if Broker.instance.vtracker.by_state[:new].nil? || Broker.instance.vtracker.by_state[:new].empty?
+          return Block.column('... no pending vertices').h_pad!
+        end
 
-        Broker.vtracker.by_state[:new].sort_by(&:name).collect { |v|
-          deps = Broker.vtracker.get_deps v
+        Broker.instance.vtracker.by_state[:new].sort_by(&:name).collect { |v|
+          deps = Broker.instance.vtracker.get_deps v
           deps = nil if deps.empty?
           deps&.sort_by!(&:state)
+          width = 20
           Block.column(
-            Block.column(v).h_pad!.box!,
+            Block.column(v).fit!(width: width - 4).h_pad!.box!,
             '🮦',
-            Block.column(*deps || 'no deps to wait').h_pad!.box!
-          ).h_pad!(2).fit!(width: 20, fill: true)
+            Block.column(*deps || 'no deps to wait').fit!(width: width - 4).h_pad!.box!
+          ).fit!(width: width, fill: true).h_pad!(2)
         }
       end
     end

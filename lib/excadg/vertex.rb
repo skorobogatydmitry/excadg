@@ -45,7 +45,7 @@ module ExcADG
     # obtains current Vertex-es data by lookup in the Broker's data,
     # available from the main Ractor only
     def data
-      Broker.data_store&.[](self)
+      Broker.instance.data_store&.[](self)
     end
 
     # gets current Vertex's state,
@@ -94,13 +94,16 @@ module ExcADG
               }
               state_machine.bind_action(:ready, :done) {
                 function = payload.get
+                Log.debug "payload has arity #{function.arity}"
                 await(timeout: vtimeout.payload) {
-                  case function.arity
-                  when 0 then function.call
-                  when 1 then function.call state_machine.state_data.data
-                  else
-                    raise Payload::IncorrectPayloadArity, "unexpected payload arity: #{function.arity}, supported only 0 and 1"
-                  end
+                  result = case function.arity
+                           when 0 then function.call
+                           when 1 then function.call state_machine.state_data.data
+                           else
+                             raise Payload::IncorrectPayloadArity, "unexpected payload arity: #{function.arity}, supported only 0 and 1"
+                           end
+                  Log.debug 'payload finished'
+                  result
                 }
               }
 

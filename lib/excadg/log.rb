@@ -29,7 +29,7 @@ module ExcADG
     end
 
     # default logger
-    @main = RLogger.new
+    @main = nil
 
     # logging is muted by default
     @muted = true
@@ -37,11 +37,12 @@ module ExcADG
     def self.method_missing(method, *args, &_block)
       return if @muted
 
+      @main ||= RLogger.new
       r = Ractor.current
       @main.send [method, r&.to_s || r.object_id, *args]
     rescue Ractor::ClosedError => e
       # last hope - there is tty
-      puts "can't send message to logging ractor: #{e}"
+      puts "can't send message to logging ractor: #{e}, message: #{args}"
     end
 
     def self.respond_to_missing?

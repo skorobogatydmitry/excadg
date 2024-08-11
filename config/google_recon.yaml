@@ -1,6 +1,6 @@
 # a more sophisticated example - do several operations on goo.gle site
 # it's obviously overcomplicated for illustration purposes
-# command: ./bin/excadg --graph config/google_recon.yaml -l recon.log -d recon.json --gdump graph.jpg
+# command: ./bin/excadg --graph config/google_recon.yaml -l recon.log -d recon.json --gdump recon.jpg
 
 jq: # this vertice fails on systems without jq
   command: jq -V

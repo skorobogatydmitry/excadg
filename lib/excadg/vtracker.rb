@@ -4,7 +4,7 @@ require 'rgl/adjacency'
 
 module ExcADG
   # tracker for {Vertex}-es graph:
-  # it's hooked by {Broker} to register dependencies polling events
+  # it's hooked by {Broker} to register dependencies polling (and other) events
   # and make an actual graph of vertices with states in runtime
   #
   # it's not possible to do this in other way, because vertices can be spawned:
@@ -30,9 +30,9 @@ module ExcADG
 
       deps.each { |raw_dep|
         # it could be not a Vertex, so do a lookup through data store
-        next unless Broker.data_store[raw_dep]
+        next unless Broker.instance.data_store[raw_dep]
 
-        dep_data = Broker.data_store[raw_dep]
+        dep_data = Broker.instance.data_store[raw_dep]
         add_to_states_cache dep_data.vertex, dep_data.state
         @graph.add_edge vertex, dep_data.vertex
       }

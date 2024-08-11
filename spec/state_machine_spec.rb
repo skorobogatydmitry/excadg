@@ -14,14 +14,19 @@ module ExcADG
       expect { sm.bind_action(:reaty, :new) { puts 'hello' } }.to raise_error StateMachine::WrongState
       expect { sm.bind_action(:ready, :now) { puts 'hello' } }.to raise_error StateMachine::WrongState
     end
-    context 'with a single action bound' do
-      subject(:dbroker) { class_double(Broker).as_stubbed_const(transfer_nested_constants: true) }
-      before { sm.bind_action(:new, :ready) { :some } }
+    context 'with the first transition bound' do
+      subject(:dbroker_cls) { class_double(Broker).as_stubbed_const(transfer_nested_constants: true) }
+      subject(:dbroker) { double Broker }
+
+      before {
+        sm.bind_action(:new, :ready) { :some }
+        allow(dbroker_cls).to receive(:instance).and_return dbroker
+      }
       it 'does not run action if it is not fully set' do
         expect { sm.step }.to raise_error StateMachine::NotAllTransitionsBound
       end
 
-      context 'and second step bound' do
+      context 'and the second transition bound' do
         subject(:dractor_cls) { class_double(Ractor).as_stubbed_const(transfer_nested_constants: true) }
         subject(:dcurr_vertex) { double Vertex }
         before {
@@ -32,7 +37,7 @@ module ExcADG
         }
         context 'and working messaging' do
           before {
-            allow(dbroker).to receive(:ask).at_least 1
+            allow(dbroker_cls).to receive(:ask).at_least 1
           }
           it 'runs bound action' do
             expect(sm.step).to eq :some
@@ -54,8 +59,8 @@ module ExcADG
         end
         context 'and faulty messaging' do
           before {
-            expect(dbroker).to receive(:ask).and_raise StandardError
-            expect(dbroker).to receive(:ask).exactly 1
+            expect(dbroker_cls).to receive(:ask).and_raise StandardError
+            expect(dbroker_cls).to receive(:ask).exactly 1
           }
           it 'fails' do
             expect(sm.step).to be_a StandardError

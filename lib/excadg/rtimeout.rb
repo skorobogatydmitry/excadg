@@ -11,13 +11,14 @@ module ExcADG
       timed_out = false
       Thread.report_on_exception = false
       payload = Thread.new { Thread.current[:result] = block.call }
-      Thread.new {
+      countdown_t = Thread.new {
         sleep timeout
         payload.kill
         timed_out = true
       }
 
       payload.join
+      countdown_t.kill
       timed_out ? raise(TimedOutError) : payload[:result]
     end
     module_function :await

@@ -8,7 +8,9 @@ module ExcADG
     end
 
     it 'times out if payload does not finishes in time' do
-      expect { RTimeout.await(timeout: 0.1) { sleep 1 } }.to raise_error RTimeout::TimedOutError
+      Timeout.timeout(0.3) {
+        expect { RTimeout.await(timeout: 0.2) { sleep 1 } }.to raise_error RTimeout::TimedOutError
+      }
     end
     it 're-raises internal exceptions' do
       ErrorCatcher.new { RTimeout.await(timeout: 1) { raise 'internal error' } }.catch { |exc|

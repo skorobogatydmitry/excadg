@@ -2,8 +2,11 @@
 
 module ExcADG
   describe Payload::Wrapper::Bin, uses: :payload do
-    before {
-      Broker.run
+    before(:all) {
+      Broker.instance.start
+    }
+    after(:all) {
+      Broker.instance.teardown
     }
     context 'echo temp file' do
       subject { Vertex.new payload: Payload::Wrapper::Bin.new(args: 'echo ${DEPS_DATAFILE}') }
@@ -22,7 +25,6 @@ module ExcADG
     end
     context 'with dependency data' do
       subject(:dep) { Vertex.new payload: Payload::Example::Echo.new(args: :pong) }
-
       subject { Vertex.new payload: Payload::Wrapper::Bin.new(args: 'cat ${DEPS_DATAFILE}'), deps: [dep] }
       it 'has deps JSON' do
         loop {
@@ -43,7 +45,12 @@ module ExcADG
   end
 
   describe Payload::Wrapper::Ruby, uses: :payload do
-    before { Broker.run }
+    before(:all) {
+      Broker.instance.start
+    }
+    after(:all) {
+      Broker.instance.teardown
+    }
     subject { Vertex.new payload: Payload::Wrapper::Ruby.new(args: '-e "puts :pong"') }
 
     it 'echoes pong' do

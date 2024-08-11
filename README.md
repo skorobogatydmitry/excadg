@@ -1,3 +1,28 @@
+- [Description](#description)
+- [Usage](#usage)
+  - [Tool](#tool)
+  - [Framework](#framework)
+    - [Payload implementation](#payload-implementation)
+    - [Vertices constructing](#vertices-constructing)
+  - [Tips](#tips)
+- [Internals](#internals)
+  - [Overview](#overview)
+  - [Vertice processing states](#vertice-processing-states)
+  - [{ExcADG::Broker}](#excadgbroker)
+  - [{ExcADG::DataStore}](#excadgdatastore)
+  - [{ExcADG::StateMachine}](#excadgstatemachine)
+  - [{ExcADG::Payload}](#excadgpayload)
+  - [{ExcADG::Log}](#excadglog)
+  - [{ExcADG::VTracker}](#excadgvtracker)
+- [Development](#development)
+  - [Gem](#gem)
+  - [Testing](#testing)
+- [Docs](#docs)
+- [Next](#next)
+  - [Core](#core)
+  - [TUI](#tui)
+  - [Payload](#payload)
+
 # Description
 
 That's a library (framework) to execute a graph of dependent tasks (vertices).  
@@ -8,11 +33,17 @@ Another feature is that the graph is dynamic and any vertex could produce anothe
 
 ## Tool
 
+tl;dr
+``` bash
+./bin/adgen --range 1:5 --file mygraph.yaml --count 30
+./bin/excadg --graph mygraph.yaml -l mygraph.log -d mygraph.yaml --gdump mygraph.jpg
+```
+
 There is a tool script in `bin` folder called `excadg`. Run `./bin/excadg --help` for available options.  
 It allows to run basic payload graphs specified by a YAML config. See [config/](config/) folder for sample configs.
 
 Another tool is `bin/adgen`, it has `--help` as well. It's suitable to generate relatively complex random graphs.  
-Try `./bin/adgen --range 1:5 --file mygraph.yaml --count 30` then `./bin/excadg --graph mygraph.yaml -l mygraph.log -d mygraph.yaml --gdump mygraph.jpg`.
+
 
 ## Framework
 
@@ -62,22 +93,26 @@ In this case, it'd be what `system 'echo here I am'` returns - `true`.
 
 Dependencies could be specified with both - {ExcADG::Vertex} objects and names. E.g.
 ``` ruby
-Broker.run
+Broker.instance.start
 
 v1 = Vertex.new payload: MyPayload.new
 Vertex.new name: :v2, payload: MyPayload.new
 
 Vertex.new name: :final, payload: MyPayload.new, deps: [v1, :v2]
 
-Broker.wait_all
+Broker.instance.wait_all
 ```
 
-*See [Broker section](#excadgbroker) for `Broker.run` and `Broker.wait_all` usage.*
+*See [Broker section](#excadgbroker) for `Broker.instance.start` and `Broker.instance.wait_all` usage.*
 
 Using actual objects looks simpler, but it's less convenient, as it requires you to construct all vertices as they appear in the execution graph.  
 However, names allows you to spawn vertices in arbitrary order and expect framework to figure execution order on the fly. See [run tool](#tool)'s code as an example of using names.
 
 *There is no need to store {ExcADG::Vertex} objects, as it and its data are available through [Broker](#excadgbroker)'s [DataStore](#excadgdatastore) and there is no interface to communicate with an {ExcADG::Vertex} directly.*
+
+## Tips
+
+If your app doesn't use all CPU cores with this library or has # of expected vertices much bigger than # of CPUs, try to `export RUBY_MAX_CPU=<num of cores> RUBY_MN_THREADS=1` to engage all cores. *See https://bugs.ruby-lang.org/issues/20618 for details.* 
 
 # Internals
 
@@ -107,10 +142,11 @@ When a vertex changes its state, it (actually, state machine does that) notifies
 
 Broker is desired to be as thin as possible to keep most of the work for vertices.
 
-Each application should invoke {Broker.run} to enable messages processing.  
-Its counterpart is {Broker.wait_all} which waits for all known vertices to reach one of the terminal states (**done** or **failed**) within specified timeout. Same as `Broker.run`, it spawns a thread and returns it. The main application could keep it in background and query or `.join` on it once all vertices are spawned. Once the thread finishes, the main app could lookup vertices execution results in {Broker.data_store} (see [DataStore](#excadgdatastore)).
+Each application should invoke `Broker.instance.start` to enable messages processing.  
+Its counterpart is `Broker.instance.wait_all` which waits for all known vertices to reach one of the terminal states (**done** or **failed**) within specified timeout. Same as `Broker.instance.start`, it spawns a thread and returns it. The main application could keep it in background and query or hang on `.join` once all vertices are spawned. Once the thread finishes, the main app could lookup vertices execution results in `Broker.instance.data_store` (see [DataStore](#excadgdatastore)). Broker could track all the seen vertices and their dependencies using builtin {ExcADG::VTracker}, add `track:true` to the `start` call to enable tracking.
 
-> Beware that broker constantly uses main Ractor's ports - incoming and outgoing. Hence, `Ractor#take`, `Ractor.yield` or any other messaging in the main ractor conflict with broker.
+> Note 1: tracking is a purely optional, broker itself requires {ExcADG::DataStore} only  
+> Note 2: beware that broker constantly uses main Ractor's ports - incoming and outgoing. Hence, `Ractor#take`, `Ractor.yield` or any other messaging in the main ractor conflict with broker.
 
 ## {ExcADG::DataStore}
 
@@ -140,6 +176,12 @@ Second way is built-in. Vertex invokes payload with {ExcADG::Array} of dependenc
 ## {ExcADG::Log}
 
 The library has its own logger based on Ractors. You could call {ExcADG::Log#unmute} to enable these logs.
+
+## {ExcADG::VTracker}
+
+It's an optional component which allows to track all vertices to be able to repro the full graph. There is no central place that stores the whole graph due to the ExcADG's core princilple - allow to spawn vertices at any time from any place. This class is introduced in order to support doing basic execution visualization (see {ExcADG::Tui}) and analysis.
+
+The tracker is integrated to the Broker and can be accessed by `ExcADG::Broker.instance.vtracker`. It's disabled by default to speed-up execution, but can be enabled on borker's startup by `Broker.instance.start track: true`.
 
 # Development
 
@@ -180,14 +222,24 @@ Logging is disabled by default, but it could be useful to debug tests. Add `ExcA
 
 > here is a list of improvemets could be implementex next
 
-- implement throttling (:suspended state)
-  - limit # of running vertices
-    - problem: can't find what to suspend
-- make a loop payload template
-  - provide a mechanism to control # of children
+## Core
+1. implement throttling: allow to `:suspend` vertices that polls deps
+  - limit # of simultaneously running vertices
+  - limit # of vertices allowed to spawn
+2. implement checks using tracker
+  - for loops (it also leads to cases when there are no nodes to start from)
+  - for unreachable islands (optional, it could be expected)
+  - for the failure root cause
+3. move Vertice's tests to system test suite, make UTs for Vertice class
 
-## Graph checks
+## TUI
+1. make timeouts more flexible in the excadg tool
+2. allow to focus on a certain vertex to see what's it waiting for and what's waiting for it
+3. allow to dump focused vertice's state
+4. improve messages for timed out execution
+5. split TUI to another gem
 
-  - check for loops in the config
-  - check for unreachable islands - graph connectivity
-  - check that there are nodes to start from
+## Payload
+4. make a loop payload template
+5. allow to stream shell payload stdout/err in realtime to logs and files
+6. add native ruby example with a dynamic graph
