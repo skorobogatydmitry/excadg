@@ -229,7 +229,6 @@ Logging is disabled by default, but it could be useful to debug tests. Add `ExcA
 2. implement checks using tracker
   - for loops (it also leads to cases when there are no nodes to start from)
   - for unreachable islands (optional, it could be expected)
-  - for the failure root cause
 3. move Vertice's tests to system test suite, make UTs for Vertice class
 
 ## TUI

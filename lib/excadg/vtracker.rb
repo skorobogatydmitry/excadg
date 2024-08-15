@@ -44,6 +44,17 @@ module ExcADG
       @graph.adjacent_vertices vertex
     end
 
+    # checks for the failure's root cause;
+    # execution fails in cascade;
+    # this method allows to find vertices where failure was introduced
+    # @return Array of failed vertices (if any) which lead to the graph's failure
+    def root_cause
+      @by_state[:failed]&.select { |v|
+        deps = @graph.adjacent_vertices v
+        deps.none? { |d| d.state.eql? :failed }
+      } || []
+    end
+
     private
 
     # adds a given {Vertex} in state to @by_state cache;

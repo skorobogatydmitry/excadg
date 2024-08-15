@@ -90,5 +90,61 @@ module ExcADG
       expect(vtracker.get_deps(dvmain)).to eq [dvdep]
       expect(vtracker.get_deps(dvdep)).to be_empty
     end
+
+    context 'for root cause detection' do
+      subject(:dv1) { double Vertex }
+      subject(:dv2) { double Vertex }
+      subject(:dv3) { double Vertex }
+      subject(:dv4) { double Vertex }
+      subject(:dv2data) { double VStateData }
+      subject(:dv3data) { double VStateData }
+      subject(:dv4data) { double VStateData }
+
+      before {
+        [dv1, dv2, dv3, dv4].each { |v|
+          allow(v).to receive(:is_a?).with(Vertex).and_return true
+          allow(v).to receive(:is_a?).with(Array).and_return false
+        }
+        allow(ddata_store).to receive(:[]).with(dv2).and_return dv2data
+        allow(ddata_store).to receive(:[]).with(dv3).and_return dv3data
+        allow(ddata_store).to receive(:[]).with(dv4).and_return dv4data
+        allow(dv2data).to receive(:vertex).and_return dv2
+        allow(dv3data).to receive(:vertex).and_return dv3
+        allow(dv4data).to receive(:vertex).and_return dv4
+      }
+
+      it 'finds none if all passed' do
+        [dv1, dv2, dv3, dv4].each { |v|
+          expect(v).to receive(:state).and_return :some
+          vtracker.track v
+        }
+
+        expect(vtracker.root_cause).to eq []
+      end
+
+      it 'finds the one failed' do
+        expect(dv1).to receive(:state).and_return :some
+        expect(dv2data).to receive(:state).and_return :some
+        expect(dv3).to receive(:state).and_return :failed
+        expect(dv3data).to receive(:state).and_return :failed
+        expect(dv4).to receive(:state).and_return :some
+        expect(dv4data).to receive(:state).and_return :some
+
+        vtracker.track dv1, [dv2, dv3]
+        vtracker.track dv3, [dv4]
+        expect(vtracker.root_cause).to eq [dv3]
+      end
+
+      it 'finds several failed' do
+        expect(dv1).to receive(:state).and_return :some
+        expect(dv2data).to receive(:state).and_return :failed
+        expect(dv3).to receive(:state).and_return :failed
+        expect(dv3data).to receive(:state).and_return :failed
+        expect(dv4data).to receive(:state).and_return :failed
+
+        vtracker.track dv1, [dv2, dv3]
+        vtracker.track dv3, [dv4]
+      end
+    end
   end
 end
