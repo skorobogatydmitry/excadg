@@ -15,4 +15,5 @@ Gem::Specification.new { |s|
   }
   # keep in sync with Gemfile
   s.add_dependency 'rgl', '~>0.6'
+  s.add_dependency 'text-ui', '~> 0.1.0'
 }

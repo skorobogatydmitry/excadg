@@ -2,6 +2,7 @@ source 'https://rubygems.org'
 
 # keep in sync with gemspec
 gem 'rgl', '~>0.6'
+gem 'text-ui', '~> 0.1.0'
 
 group :dev do
   gem 'redcarpet' # render markdown in yard

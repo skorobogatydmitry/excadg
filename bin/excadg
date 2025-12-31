@@ -58,7 +58,7 @@ logfile, ui_drawer =
   when ':silent'
     [nil, nil]
   else # all other strings are considered log file names
-    [options[:logfile], ExcADG::Tui]
+    [options[:logfile], ExcADG::AdgTui]
   end
 
 unless logfile.nil?
